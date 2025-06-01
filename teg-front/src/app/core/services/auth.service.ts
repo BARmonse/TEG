@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
@@ -47,9 +47,13 @@ export class AuthService {
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials)
+    console.log('Attempting login to:', `${this.API_URL}/login`);
+    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+    
+    return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials, { headers })
       .pipe(
         tap(user => {
+          console.log('Login successful:', user);
           localStorage.setItem('currentUser', JSON.stringify(user));
           this.currentUserSubject.next(user);
           this.router.navigate(['/dashboard']);
@@ -58,9 +62,13 @@ export class AuthService {
   }
 
   register(userData: RegisterRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData)
+    console.log('Attempting registration to:', `${this.API_URL}/register`);
+    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+    
+    return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData, { headers })
       .pipe(
         tap(user => {
+          console.log('Registration successful:', user);
           localStorage.setItem('currentUser', JSON.stringify(user));
           this.currentUserSubject.next(user);
           this.router.navigate(['/dashboard']);

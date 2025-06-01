@@ -7,14 +7,14 @@ import api.service.AuthenticationService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@Slf4j
+@CrossOrigin(origins = "*")
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
@@ -27,6 +27,7 @@ public class AuthenticationController {
     public ResponseEntity<AuthenticationResponse> register(
             @Valid @RequestBody UserRegistrationDTO request
     ) {
+        log.debug("Received registration request for user: {}", request.getUsername());
         return ResponseEntity.ok(authenticationService.register(request));
     }
 
@@ -34,6 +35,7 @@ public class AuthenticationController {
     public ResponseEntity<AuthenticationResponse> login(
             @Valid @RequestBody LoginDTO request
     ) {
+        log.debug("Received login request for user: {}", request.getUsernameOrEmail());
         return ResponseEntity.ok(authenticationService.authenticate(request));
     }
 } 

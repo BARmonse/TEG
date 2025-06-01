@@ -7,6 +7,7 @@ import api.model.User;
 import api.repository.UserRepository;
 import api.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthenticationService {
 
     private final UserRepository userRepository;
@@ -24,11 +26,15 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationResponse register(UserRegistrationDTO request) {
+        log.info("Attempting to register user: {}", request.getUsername());
+        
         // Check if username or email already exists
         if (userRepository.existsByUsername(request.getUsername())) {
+            log.warn("Registration failed: Username already exists - {}", request.getUsername());
             throw new RuntimeException("Username already exists");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
+            log.warn("Registration failed: Email already exists - {}", request.getEmail());
             throw new RuntimeException("Email already exists");
         }
 
@@ -42,6 +48,7 @@ public class AuthenticationService {
         user.setGamesWon(0);
 
         userRepository.save(user);
+        log.info("User registered successfully: {}", user.getUsername());
 
         String token = jwtService.generateToken(user);
         
@@ -55,28 +62,39 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(LoginDTO request) {
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(
-                request.getUsernameOrEmail(),
-                request.getPassword()
-            )
-        );
+        log.info("Attempting authentication for user: {}", request.getUsernameOrEmail());
+        
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                    request.getUsernameOrEmail(),
+                    request.getPassword()
+                )
+            );
 
-        var user = userRepository.findByUsername(request.getUsernameOrEmail())
-                .orElseGet(() -> userRepository.findByEmail(request.getUsernameOrEmail())
-                        .orElseThrow(() -> new RuntimeException("User not found")));
+            User user = userRepository.findByUsername(request.getUsernameOrEmail())
+                    .orElseGet(() -> userRepository.findByEmail(request.getUsernameOrEmail())
+                            .orElseThrow(() -> {
+                                log.warn("Authentication failed: User not found - {}", request.getUsernameOrEmail());
+                                return new RuntimeException("User not found");
+                            }));
 
-        user.setLastLogin(LocalDateTime.now());
-        userRepository.save(user);
+            user.setLastLogin(LocalDateTime.now());
+            userRepository.save(user);
 
-        String token = jwtService.generateToken(user);
+            String token = jwtService.generateToken(user);
+            log.info("User authenticated successfully: {}", user.getUsername());
 
-        return AuthenticationResponse.builder()
-                .token(token)
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .gamesPlayed(user.getGamesPlayed())
-                .gamesWon(user.getGamesWon())
-                .build();
+            return AuthenticationResponse.builder()
+                    .token(token)
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .gamesPlayed(user.getGamesPlayed())
+                    .gamesWon(user.getGamesWon())
+                    .build();
+        } catch (Exception e) {
+            log.error("Authentication failed for user: {} - Error: {}", request.getUsernameOrEmail(), e.getMessage());
+            throw e;
+        }
     }
 } 
