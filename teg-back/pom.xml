@@ -10,7 +10,7 @@
         <relativePath/>
     </parent>
     <groupId>teg</groupId>
-    <artifactId>tpi-teg</artifactId>
+    <artifactId>teg</artifactId>
     <version>0.0.1-SNAPSHOT</version> <!-- Change the artifact version every time you release a new version-->
     <name>TEG</name> <!-- TODO: Change the project name -->
     <description>Tácticas y Estrategias de Guerra</description> <!-- TODO: Change the project description -->
