@@ -58,6 +58,11 @@ public class AuthenticationService {
                 .email(user.getEmail())
                 .gamesPlayed(user.getGamesPlayed())
                 .gamesWon(user.getGamesWon())
+                .gamesLost(user.getGamesLost())
+                .lastLogin(user.getLastLogin())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .isActive(user.getIsActive())
                 .build();
     }
 
@@ -91,10 +96,37 @@ public class AuthenticationService {
                     .email(user.getEmail())
                     .gamesPlayed(user.getGamesPlayed())
                     .gamesWon(user.getGamesWon())
+                    .gamesLost(user.getGamesLost())
+                    .lastLogin(user.getLastLogin())
+                    .createdAt(user.getCreatedAt())
+                    .updatedAt(user.getUpdatedAt())
+                    .isActive(user.getIsActive())
                     .build();
         } catch (Exception e) {
             log.error("Authentication failed for user: {} - Error: {}", request.getUsernameOrEmail(), e.getMessage());
             throw e;
         }
+    }
+
+    public AuthenticationResponse getCurrentUser(String username) {
+        log.info("Getting current user info for: {}", username);
+        
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    log.warn("User not found: {}", username);
+                    return new RuntimeException("User not found");
+                });
+
+        return AuthenticationResponse.builder()
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .gamesPlayed(user.getGamesPlayed())
+                .gamesWon(user.getGamesWon())
+                .gamesLost(user.getGamesLost())
+                .lastLogin(user.getLastLogin())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .isActive(user.getIsActive())
+                .build();
     }
 } 

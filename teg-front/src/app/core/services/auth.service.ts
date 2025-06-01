@@ -10,6 +10,11 @@ export interface AuthResponse {
   email: string;
   gamesPlayed: number;
   gamesWon: number;
+  gamesLost: number;
+  lastLogin: string;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
 }
 
 export interface LoginRequest {
@@ -88,5 +93,16 @@ export class AuthService {
 
   getAuthToken(): string | null {
     return this.currentUserValue?.token ?? null;
+  }
+
+  getCurrentUser(): Observable<AuthResponse> {
+    console.log('Fetching current user info');
+    return this.http.get<AuthResponse>(`${this.API_URL}/me`).pipe(
+      tap(user => {
+        console.log('Current user info:', user);
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        this.currentUserSubject.next(user);
+      })
+    );
   }
 } 

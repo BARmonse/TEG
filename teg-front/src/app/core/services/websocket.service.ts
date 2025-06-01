@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { Observable, BehaviorSubject, Subject, timer } from 'rxjs';
-import { retryWhen, delayWhen, tap } from 'rxjs/operators';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { Client, IMessage } from '@stomp/stompjs';
 import { environment } from '../../../environments/environment';
 
 export interface WebSocketMessage {
@@ -13,8 +12,8 @@ export interface WebSocketMessage {
   providedIn: 'root'
 })
 export class WebSocketService {
-  private socket$!: WebSocketSubject<WebSocketMessage>;
-  private messagesSubject = new Subject<WebSocketMessage>();
+  private client: Client;
+  private messagesSubject = new BehaviorSubject<WebSocketMessage>({ type: '', payload: null });
   public messages$ = this.messagesSubject.asObservable();
   private connectionStatus = new BehaviorSubject<boolean>(false);
   public connectionStatus$ = this.connectionStatus.asObservable();
@@ -22,70 +21,112 @@ export class WebSocketService {
   public activeUsersCount$ = this.activeUsersCount.asObservable();
 
   constructor() {
-    this.connect();
+    this.client = new Client({
+      brokerURL: `${environment.wsUrl}/ws/game`,
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: () => {
+        console.log('Connected to STOMP server');
+        this.connectionStatus.next(true);
+        this.subscribeToTopics();
+        // Request initial count after subscribing
+        setTimeout(() => {
+          this.sendConnect();
+          this.requestActiveUsersCount();
+        }, 100);
+      },
+      onDisconnect: () => {
+        console.log('Disconnected from STOMP server');
+        this.connectionStatus.next(false);
+        this.activeUsersCount.next(0);
+      },
+      onStompError: (frame) => {
+        console.error('STOMP error:', frame);
+      },
+      debug: (str) => {
+        console.log('STOMP: ' + str);
+      }
+    });
+
+    this.activate();
   }
 
-  private connect(): void {
-    if (!this.socket$ || this.socket$.closed) {
-      this.socket$ = webSocket<WebSocketMessage>({
-        url: `${environment.wsUrl}/game`,
-        openObserver: {
-          next: () => {
-            console.log('WebSocket connection established');
-            this.connectionStatus.next(true);
-            this.requestActiveUsersCount();
-          }
-        },
-        closeObserver: {
-          next: () => {
-            console.log('WebSocket connection closed');
-            this.connectionStatus.next(false);
-            this.reconnect();
-          }
-        }
+  private activate(): void {
+    this.client.activate();
+  }
+
+  private subscribeToTopics(): void {
+    // Subscribe to broadcast active users updates
+    this.client.subscribe('/topic/active-users', (message: IMessage) => {
+      const data = JSON.parse(message.body);
+      console.log('Received broadcast active users update:', data);
+      this.updateActiveUsersCount(data.count);
+    });
+
+    // Subscribe to user-specific active users updates
+    this.client.subscribe('/user/queue/active-users', (message: IMessage) => {
+      const data = JSON.parse(message.body);
+      console.log('Received personal active users update:', data);
+      this.updateActiveUsersCount(data.count);
+    });
+
+    // Subscribe to game updates
+    this.client.subscribe('/topic/game-updates', (message: IMessage) => {
+      const data = JSON.parse(message.body);
+      this.messagesSubject.next(data);
+    });
+
+    // Subscribe to errors
+    this.client.subscribe('/user/queue/errors', (message: IMessage) => {
+      const data = JSON.parse(message.body);
+      this.messagesSubject.next({
+        type: 'ERROR',
+        payload: { message: data.message }
       });
-
-      this.socket$.pipe(
-        retryWhen(errors =>
-          errors.pipe(
-            tap(err => console.error('WebSocket error:', err)),
-            delayWhen(() => timer(1000))
-          )
-        )
-      ).subscribe({
-        next: (message) => {
-          if (message.type === 'ACTIVE_USERS_COUNT') {
-            this.activeUsersCount.next(message.payload.count);
-          }
-          this.messagesSubject.next(message);
-        },
-        error: (error) => console.error('WebSocket error:', error)
-      });
-    }
+    });
   }
 
-  private reconnect(): void {
-    setTimeout(() => {
-      console.log('Attempting to reconnect...');
-      this.connect();
-    }, 1000);
-  }
-
-  public send(message: WebSocketMessage): void {
-    if (this.socket$ && !this.socket$.closed) {
-      this.socket$.next(message);
-    } else {
-      console.warn('WebSocket is not connected, attempting to reconnect...');
-      this.connect();
-      setTimeout(() => this.send(message), 1000);
+  private updateActiveUsersCount(count: number): void {
+    console.log('Updating active users count:', count);
+    if (count > 0) {  // Only update if count is greater than 0
+      this.activeUsersCount.next(count);
     }
   }
 
   private requestActiveUsersCount(): void {
-    this.send({
-      type: 'GET_ACTIVE_USERS_COUNT',
-      payload: {}
-    });
+    if (this.client.connected) {
+      this.client.publish({
+        destination: '/app/get-active-users',
+        body: JSON.stringify({
+          type: 'GET_ACTIVE_USERS',
+          payload: {}
+        })
+      });
+    }
+  }
+
+  private sendConnect(): void {
+    if (this.client.connected) {
+      this.client.publish({
+        destination: '/app/connect',
+        body: JSON.stringify({
+          type: 'CONNECT',
+          payload: {}
+        })
+      });
+    }
+  }
+
+  public send(message: WebSocketMessage): void {
+    if (this.client.connected) {
+      this.client.publish({
+        destination: '/app/message',
+        body: JSON.stringify(message)
+      });
+    } else {
+      console.warn('WebSocket is not connected, message not sent:', message);
+    }
   }
 
   public joinGame(gameId: string): void {
@@ -110,8 +151,13 @@ export class WebSocketService {
   }
 
   public disconnect(): void {
-    if (this.socket$) {
-      this.socket$.complete();
+    if (this.client) {
+      this.deactivate();
     }
+  }
+
+  private deactivate(): void {
+    this.activeUsersCount.next(0);
+    this.client.deactivate();
   }
 } 

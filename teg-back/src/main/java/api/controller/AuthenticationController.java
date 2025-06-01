@@ -9,6 +9,8 @@ import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -37,5 +39,12 @@ public class AuthenticationController {
     ) {
         log.debug("Received login request for user: {}", request.getUsernameOrEmail());
         return ResponseEntity.ok(authenticationService.authenticate(request));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<AuthenticationResponse> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.debug("Getting current user info for: {}", authentication.getName());
+        return ResponseEntity.ok(authenticationService.getCurrentUser(authentication.getName()));
     }
 } 
