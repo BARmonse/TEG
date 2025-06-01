@@ -1,0 +1,82 @@
+package api.service;
+
+import api.dto.AuthenticationResponse;
+import api.dto.LoginDTO;
+import api.dto.UserRegistrationDTO;
+import api.model.User;
+import api.repository.UserRepository;
+import api.security.JwtService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class AuthenticationService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    public AuthenticationResponse register(UserRegistrationDTO request) {
+        // Check if username or email already exists
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Username already exists");
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        var user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setCreatedAt(LocalDateTime.now());
+        user.setLastLogin(LocalDateTime.now());
+        user.setGamesPlayed(0);
+        user.setGamesWon(0);
+
+        userRepository.save(user);
+
+        String token = jwtService.generateToken(user);
+        
+        return AuthenticationResponse.builder()
+                .token(token)
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .gamesPlayed(user.getGamesPlayed())
+                .gamesWon(user.getGamesWon())
+                .build();
+    }
+
+    public AuthenticationResponse authenticate(LoginDTO request) {
+        authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(
+                request.getUsernameOrEmail(),
+                request.getPassword()
+            )
+        );
+
+        var user = userRepository.findByUsername(request.getUsernameOrEmail())
+                .orElseGet(() -> userRepository.findByEmail(request.getUsernameOrEmail())
+                        .orElseThrow(() -> new RuntimeException("User not found")));
+
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
+
+        String token = jwtService.generateToken(user);
+
+        return AuthenticationResponse.builder()
+                .token(token)
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .gamesPlayed(user.getGamesPlayed())
+                .gamesWon(user.getGamesWon())
+                .build();
+    }
+} 

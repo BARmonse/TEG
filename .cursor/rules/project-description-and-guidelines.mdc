@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Always use camelCase
+- Always answer in english, if you see text in spanish in the current code please replace it with its translation in english
+- Always use Tailwind for styling
+- Use Framer Motion for animations
+- Always review the instructions to see if the implementation is correct [TEG.pdf](mdc:teg-back/docs/assets/TEG.pdf). Let's focus on mandatory   requirements first
+
+- Always answer having in mind that I'm using JDK 17 for the api and Angular
