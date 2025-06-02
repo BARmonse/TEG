@@ -1,6 +1,7 @@
 package api.websocket;
 
 import api.security.JwtService;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -14,6 +15,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -23,7 +26,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     private final UserDetailsService userDetailsService;
 
     @Override
-    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+    public Message<?> preSend(@NonNull Message<?> message,@NonNull MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
@@ -61,7 +64,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     private String extractToken(StompHeaderAccessor accessor) {
         String token = null;
         if (accessor.getNativeHeader("Authorization") != null) {
-            String authHeader = accessor.getNativeHeader("Authorization").get(0);
+            String authHeader = Objects.requireNonNull(accessor.getNativeHeader("Authorization")).get(0);
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 token = authHeader.substring(7);
             }
