@@ -9,7 +9,6 @@ interface Game {
   name: string;
   maxPlayers: number;
   currentPlayers: number;
-  gameMode: string;
   status: 'waiting' | 'in_progress' | 'finished';
   createdAt: string;
 }
@@ -134,9 +133,6 @@ interface Game {
             Players: {{ game.currentPlayers }}/{{ game.maxPlayers }}
           </div>
           <div class="game-info">
-            Mode: {{ game.gameMode }}
-          </div>
-          <div class="game-info">
             Created: {{ game.createdAt | date:'short' }}
           </div>
           <div
@@ -174,10 +170,7 @@ export class GameListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Request the initial game list
-    this.wsService.send({
-      type: 'GET_GAMES',
-      payload: {}
-    });
+    this.wsService.getGames();
 
     // Subscribe to WebSocket messages
     this.wsSubscription = this.wsService.messages$.subscribe({

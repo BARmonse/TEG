@@ -1,13 +1,14 @@
+-- Create users table
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    last_login TIMESTAMP,
     games_played INTEGER DEFAULT 0,
     games_won INTEGER DEFAULT 0,
     games_lost INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT true
-);
+); 

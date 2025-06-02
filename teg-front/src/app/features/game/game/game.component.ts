@@ -64,10 +64,7 @@ export class GameComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     if (this.gameId) {
       // Request game information
-      this.wsService.send({
-        type: 'GET_GAME_INFO',
-        payload: { gameId: this.gameId }
-      });
+      this.wsService.getGameInfo(this.gameId);
 
       // Subscribe to WebSocket messages
       this.wsSubscription = this.wsService.messages$.subscribe({

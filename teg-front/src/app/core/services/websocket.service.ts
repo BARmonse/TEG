@@ -12,7 +12,7 @@ export interface WebSocketMessage {
   providedIn: 'root'
 })
 export class WebSocketService {
-  private client: Client;
+  private client!: Client;
   private messagesSubject = new BehaviorSubject<WebSocketMessage>({ type: '', payload: null });
   public messages$ = this.messagesSubject.asObservable();
   private connectionStatus = new BehaviorSubject<boolean>(false);
@@ -21,11 +21,18 @@ export class WebSocketService {
   public activeUsersCount$ = this.activeUsersCount.asObservable();
 
   constructor() {
+    this.initializeWebSocketClient();
+  }
+
+  private initializeWebSocketClient() {
     this.client = new Client({
       brokerURL: `${environment.wsUrl}/ws/game`,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
+      connectHeaders: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
       onConnect: () => {
         console.log('Connected to STOMP server');
         this.connectionStatus.next(true);
@@ -77,6 +84,18 @@ export class WebSocketService {
       this.messagesSubject.next(data);
     });
 
+    // Subscribe to user-specific game updates
+    this.client.subscribe('/user/queue/game-created', (message: IMessage) => {
+      const data = JSON.parse(message.body);
+      this.messagesSubject.next(data);
+    });
+
+    // Subscribe to user-specific game list
+    this.client.subscribe('/user/queue/games', (message: IMessage) => {
+      const data = JSON.parse(message.body);
+      this.messagesSubject.next(data);
+    });
+
     // Subscribe to errors
     this.client.subscribe('/user/queue/errors', (message: IMessage) => {
       const data = JSON.parse(message.body);
@@ -118,36 +137,59 @@ export class WebSocketService {
     }
   }
 
-  public send(message: WebSocketMessage): void {
+  public createGame(gameConfig: any): void {
     if (this.client.connected) {
       this.client.publish({
-        destination: '/app/message',
-        body: JSON.stringify(message)
+        destination: '/app/create-game',
+        body: JSON.stringify(gameConfig)
       });
     } else {
-      console.warn('WebSocket is not connected, message not sent:', message);
+      console.warn('WebSocket is not connected, game creation failed:', gameConfig);
+    }
+  }
+
+  public getGames(): void {
+    if (this.client.connected) {
+      this.client.publish({
+        destination: '/app/get-games',
+        body: JSON.stringify({})
+      });
+    } else {
+      console.warn('WebSocket is not connected, cannot fetch games');
+    }
+  }
+
+  public getGameInfo(gameId: string): void {
+    if (this.client.connected) {
+      this.client.publish({
+        destination: '/app/get-game-info',
+        body: JSON.stringify({ gameId })
+      });
+    } else {
+      console.warn('WebSocket is not connected, cannot fetch game info:', gameId);
     }
   }
 
   public joinGame(gameId: string): void {
-    this.send({
-      type: 'JOIN_GAME',
-      payload: { gameId }
-    });
-  }
-
-  public createGame(gameConfig: any): void {
-    this.send({
-      type: 'CREATE_GAME',
-      payload: gameConfig
-    });
+    if (this.client.connected) {
+      this.client.publish({
+        destination: '/app/join-game',
+        body: JSON.stringify({ gameId })
+      });
+    } else {
+      console.warn('WebSocket is not connected, cannot join game:', gameId);
+    }
   }
 
   public leaveGame(gameId: string): void {
-    this.send({
-      type: 'LEAVE_GAME',
-      payload: { gameId }
-    });
+    if (this.client.connected) {
+      this.client.publish({
+        destination: '/app/leave-game',
+        body: JSON.stringify({ gameId })
+      });
+    } else {
+      console.warn('WebSocket is not connected, cannot leave game:', gameId);
+    }
   }
 
   public disconnect(): void {

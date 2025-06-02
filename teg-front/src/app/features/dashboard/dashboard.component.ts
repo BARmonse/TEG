@@ -92,6 +92,25 @@ import { ActiveUsersComponent } from '../../shared/components/active-users/activ
       font-size: 0.875rem;
       color: #6b7280;
     }
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .logout-button {
+      padding: 0.5rem 1rem;
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .logout-button:hover {
+      background-color: #dc2626;
+    }
   `],
   template: `
     <div class="container">
@@ -100,7 +119,12 @@ import { ActiveUsersComponent } from '../../shared/components/active-users/activ
           <h1 class="title">Welcome back, {{ username }}!</h1>
           <p class="subtitle">Here are your game statistics</p>
         </div>
-        <app-active-users></app-active-users>
+        <div class="header-actions">
+          <app-active-users></app-active-users>
+          <button (click)="logout()" class="logout-button">
+            Logout
+          </button>
+        </div>
       </div>
 
       <div class="stats-grid">

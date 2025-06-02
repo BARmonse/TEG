@@ -1,5 +1,7 @@
 package api.websocket;
 
+import api.dto.GameDTO;
+import api.service.GameService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -7,8 +9,11 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -17,11 +22,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class WebSocketHandler {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final GameService gameService;
     private final AtomicInteger activeUsers = new AtomicInteger(0);
     private final ConcurrentHashMap<String, String> sessionUsers = new ConcurrentHashMap<>();
 
-    public WebSocketHandler(SimpMessagingTemplate messagingTemplate) {
+    public WebSocketHandler(SimpMessagingTemplate messagingTemplate, GameService gameService) {
         this.messagingTemplate = messagingTemplate;
+        this.gameService = gameService;
     }
 
     public void handleConnect(MessageHeaders headers) {
@@ -77,6 +84,26 @@ public class WebSocketHandler {
         int count = activeUsers.get();
         log.debug("Received request for active users count. Current count: {}", count);
         return new ActiveUsersMessage(count);
+    }
+
+    @MessageMapping("/get-games")
+    public void getGames(Authentication authentication) {
+        log.info("Getting available games for user: {}", authentication.getName());
+        try {
+            List<GameDTO> games = gameService.getAvailableGames();
+            messagingTemplate.convertAndSendToUser(
+                authentication.getName(),
+                "/queue/games",
+                Map.of("type", "GAMES_LIST", "payload", Map.of("games", games))
+            );
+        } catch (Exception e) {
+            log.error("Error getting games", e);
+            messagingTemplate.convertAndSendToUser(
+                authentication.getName(),
+                "/queue/errors",
+                Map.of("type", "ERROR", "payload", Map.of("message", e.getMessage()))
+            );
+        }
     }
 
     private void broadcastActiveUsersCount() {
