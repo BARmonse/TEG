@@ -11,3 +11,4 @@ alwaysApply: true
 
 - Always answer having in mind that I'm using JDK 17 for the api and Angular 19
 - don't do this @RequestBody Map<String, Object> payload. Instead create the respective DTO.
+- All the requests should be done via REST API calls. Don't use web sockets for this.
