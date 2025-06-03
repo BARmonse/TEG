@@ -52,7 +52,6 @@ export class AuthService {
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    console.log('Attempting login to:', `${this.API_URL}/login`);
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
     
     return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials, { headers })
@@ -67,7 +66,6 @@ export class AuthService {
   }
 
   register(userData: RegisterRequest): Observable<AuthResponse> {
-    console.log('Attempting registration to:', `${this.API_URL}/register`);
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
     
     return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData, { headers })

@@ -90,7 +90,7 @@ public class GameService {
         if (!isAlreadyInGame) {
             // Determine the next available color
             PlayerColor nextColor = getNextAvailableColor(game);
-            
+
             GamePlayer gamePlayer = GamePlayer.builder()
                     .id(new GamePlayerId(game.getId(), user.getId()))
                     .game(game)

@@ -11,4 +11,5 @@ alwaysApply: true
 
 - Always answer having in mind that I'm using JDK 17 for the api and Angular 19
 - don't do this @RequestBody Map<String, Object> payload. Instead create the respective DTO.
-- All the requests should be done via REST API calls. Don't use web sockets for this.
+- All the requests should be done via REST API calls. Don't use web sockets for everything.
+- WebSockets should be used only to update the other client UI's. For example, a user creates a game(API call). Another user joins the game(API call), and after the user joins the room we use the websockets to update the UI of the first user().

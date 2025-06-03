@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -20,52 +20,36 @@ export class GameService {
 
   constructor(private http: HttpClient) {}
 
-  private getHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No authentication token found');
-    }
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token || ''}`
-    });
-  }
-
   createGame(gameName: string, maxPlayers: number): Observable<GameDTO> {
     const payload = { gameName, maxPlayers };
     return this.http.post<GameDTO>(
       `${this.apiUrl}/create`,
-      payload,
-      { headers: this.getHeaders() }
+      payload
     );
   }
 
   getAvailableGames(): Observable<GameDTO[]> {
     return this.http.get<GameDTO[]>(
-      `${this.apiUrl}/list`,
-      { headers: this.getHeaders() }
+      `${this.apiUrl}/list`
     );
   }
 
   getGame(id: number): Observable<GameDTO> {
     return this.http.get<GameDTO>(
-      `${this.apiUrl}/${id}`,
-      { headers: this.getHeaders() }
+      `${this.apiUrl}/${id}`
     );
   }
 
   joinGame(gameId: number): Observable<GameDTO> {
     return this.http.post<GameDTO>(
       `${this.apiUrl}/join/${gameId}`,
-      null,
-      { headers: this.getHeaders() }
+      null
     );
   }
 
   cancelGame(gameId: number): Observable<void> {
     return this.http.delete<void>(
-      `${this.apiUrl}/${gameId}/leave`,
-      { headers: this.getHeaders() }
+      `${this.apiUrl}/${gameId}/leave`
     );
   }
 } 
