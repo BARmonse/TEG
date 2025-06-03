@@ -113,16 +113,17 @@
         <!-- Testcontainers -->
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
+            <artifactId>junit-jupiter</artifactId>
             <version>1.19.7</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>postgresql</artifactId>
             <version>1.19.7</version>
             <scope>test</scope>
         </dependency>
+
         <!-- Rest Assured for API testing -->
         <dependency>
             <groupId>io.rest-assured</groupId>

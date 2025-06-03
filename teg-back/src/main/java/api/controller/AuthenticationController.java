@@ -42,7 +42,7 @@ public class AuthenticationController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<AuthenticationResponse> getCurrentUser() {
+    public ResponseEntity<AuthenticationResponse> getLoggedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         log.debug("Getting current user info for: {}", authentication.getName());
         return ResponseEntity.ok(authenticationService.getCurrentUser(authentication.getName()));
