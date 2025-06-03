@@ -73,4 +73,27 @@ public class GameController {
             throw new RuntimeException("Failed to get game: " + e.getMessage());
         }
     }
+
+    @PostMapping("/join/{id}")
+    public ResponseEntity<GameDTO> joinGame(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        log.info("User {} attempting to join game {}", authentication.getName(), id);
+        try {
+            gameService.joinGame(id, authentication.getName());
+            GameDTO game = gameService.getGame(id);
+            
+            // Broadcast to all users via WebSocket
+            messagingTemplate.convertAndSend(
+                "/topic/game-updates",
+                Map.of("type", "GAME_UPDATED", "payload", game)
+            );
+
+            return ResponseEntity.ok(game);
+        } catch (Exception e) {
+            log.error("Error joining game", e);
+            throw new RuntimeException("Failed to join game: " + e.getMessage());
+        }
+    }
 } 

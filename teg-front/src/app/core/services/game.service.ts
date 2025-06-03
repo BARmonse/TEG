@@ -22,9 +22,12 @@ export class GameService {
 
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found');
+    }
     return new HttpHeaders({
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token || ''}`
     });
   }
 
@@ -47,6 +50,21 @@ export class GameService {
   getGame(id: number): Observable<GameDTO> {
     return this.http.get<GameDTO>(
       `${this.apiUrl}/${id}`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  joinGame(gameId: number): Observable<GameDTO> {
+    return this.http.post<GameDTO>(
+      `${this.apiUrl}/join/${gameId}`,
+      null,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  cancelGame(gameId: number): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/${gameId}/leave`,
       { headers: this.getHeaders() }
     );
   }

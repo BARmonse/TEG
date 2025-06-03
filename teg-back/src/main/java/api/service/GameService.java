@@ -9,8 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,6 +65,54 @@ public class GameService {
         Game game = gameRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
         return convertToDTO(game);
+    }
+
+    @Transactional
+    public void joinGame(Long gameId, String username) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new RuntimeException("Game not found"));
+
+        if (game.getStatus() != GameStatus.WAITING) {
+            throw new RuntimeException("Game is not in waiting state");
+        }
+
+        if (game.getPlayers().size() >= game.getMaxPlayers()) {
+            throw new RuntimeException("Game is full");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check if user is already in the game
+        boolean isAlreadyInGame = game.getPlayers().stream()
+                .anyMatch(player -> player.getUser().getId().equals(user.getId()));
+
+        if (!isAlreadyInGame) {
+            // Determine the next available color
+            PlayerColor nextColor = getNextAvailableColor(game);
+            
+            GamePlayer gamePlayer = GamePlayer.builder()
+                    .id(new GamePlayerId(game.getId(), user.getId()))
+                    .game(game)
+                    .user(user)
+                    .color(nextColor)
+                    .turnOrder(game.getPlayers().size() + 1)
+                    .build();
+
+            game.getPlayers().add(gamePlayer);
+            gameRepository.save(game);
+        }
+    }
+
+    private PlayerColor getNextAvailableColor(Game game) {
+        Set<PlayerColor> usedColors = game.getPlayers().stream()
+                .map(GamePlayer::getColor)
+                .collect(Collectors.toSet());
+
+        return Arrays.stream(PlayerColor.values())
+                .filter(color -> !usedColors.contains(color))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No available colors"));
     }
 
     private GameDTO convertToDTO(Game game) {

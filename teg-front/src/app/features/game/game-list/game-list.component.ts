@@ -1,17 +1,7 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { WebSocketService } from '../../../core/services/websocket.service';
-import { Subscription } from 'rxjs';
-
-interface Game {
-  id: string;
-  name: string;
-  maxPlayers: number;
-  currentPlayers: number;
-  status: 'waiting' | 'in_progress' | 'finished';
-  createdAt: string;
-}
+import { GameService, GameDTO } from '../../../core/services/game.service';
 
 @Component({
   selector: 'app-game-list',
@@ -34,15 +24,17 @@ interface Game {
       align-items: center;
       margin-bottom: 2rem;
     }
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+    }
     .title {
       font-size: 1.875rem;
       font-weight: bold;
       color: #111827;
     }
-    .create-button {
+    .btn {
       padding: 0.75rem 1.5rem;
-      background-color: #6366f1;
-      color: white;
       border: none;
       border-radius: 0.375rem;
       font-size: 0.875rem;
@@ -50,9 +42,22 @@ interface Game {
       cursor: pointer;
       transition: all 0.2s;
     }
-    .create-button:hover {
-      background-color: #4f46e5;
+    .btn:hover {
       transform: translateY(-1px);
+    }
+    .btn-primary {
+      background-color: #6366f1;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #4f46e5;
+    }
+    .btn-secondary {
+      background-color: #e5e7eb;
+      color: #374151;
+    }
+    .btn-secondary:hover {
+      background-color: #d1d5db;
     }
     .games-grid {
       display: grid;
@@ -89,18 +94,8 @@ interface Game {
       font-size: 0.75rem;
       font-weight: 500;
       margin-top: 0.5rem;
-    }
-    .status-waiting {
       background-color: #dcfce7;
       color: #166534;
-    }
-    .status-in-progress {
-      background-color: #dbeafe;
-      color: #1e40af;
-    }
-    .status-finished {
-      background-color: #fee2e2;
-      color: #991b1b;
     }
     .empty-state {
       text-align: center;
@@ -114,12 +109,22 @@ interface Game {
       color: #6b7280;
       margin-bottom: 1.5rem;
     }
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
   `],
   template: `
     <div class="container">
       <div class="header">
         <h1 class="title">Available Games</h1>
-        <button class="create-button" (click)="navigateToCreate()">Create Game</button>
+        <div class="header-actions">
+          <button class="btn btn-secondary" (click)="refreshGames()" [class.loading]="isLoading">
+            <span *ngIf="!isLoading">🔄 Refresh</span>
+            <span *ngIf="isLoading">Refreshing...</span>
+          </button>
+          <button class="btn btn-primary" (click)="navigateToCreate()">Create Game</button>
+        </div>
       </div>
 
       <div *ngIf="games.length > 0; else noGames" class="games-grid">
@@ -127,6 +132,7 @@ interface Game {
           *ngFor="let game of games"
           class="game-card"
           (click)="joinGame(game.id)"
+          [class.loading]="joiningGame === game.id"
         >
           <div class="game-name">{{ game.name }}</div>
           <div class="game-info">
@@ -135,15 +141,8 @@ interface Game {
           <div class="game-info">
             Created: {{ game.createdAt | date:'short' }}
           </div>
-          <div
-            class="game-status"
-            [ngClass]="{
-              'status-waiting': game.status === 'waiting',
-              'status-in-progress': game.status === 'in_progress',
-              'status-finished': game.status === 'finished'
-            }"
-          >
-            {{ game.status | titlecase }}
+          <div class="game-status">
+            Waiting for players
           </div>
         </div>
       </div>
@@ -151,7 +150,7 @@ interface Game {
       <ng-template #noGames>
         <div class="empty-state">
           <p class="empty-state-text">No games available at the moment</p>
-          <button class="create-button" (click)="navigateToCreate()">
+          <button class="btn btn-primary" (click)="navigateToCreate()">
             Create a New Game
           </button>
         </div>
@@ -159,64 +158,56 @@ interface Game {
     </div>
   `
 })
-export class GameListComponent implements OnInit, OnDestroy {
-  games: Game[] = [];
-  private wsSubscription?: Subscription;
+export class GameListComponent implements OnInit {
+  games: GameDTO[] = [];
+  isLoading = false;
+  joiningGame: number | null = null;
 
   constructor(
-    private wsService: WebSocketService,
+    private gameService: GameService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    // Request the initial game list
-    this.wsService.getGames();
-
-    // Subscribe to WebSocket messages
-    this.wsSubscription = this.wsService.messages$.subscribe({
-      next: (message) => {
-        switch (message.type) {
-          case 'GAMES_LIST':
-            this.games = message.payload.games;
-            break;
-          case 'GAME_UPDATED':
-            this.updateGame(message.payload);
-            break;
-          case 'GAME_JOINED':
-            this.router.navigate(['/game', message.payload.gameId]);
-            break;
-          case 'ERROR':
-            console.error('Game error:', message.payload.message);
-            break;
-        }
-      },
-      error: (error) => {
-        console.error('WebSocket error:', error);
-      }
-    });
+    this.refreshGames();
   }
 
-  ngOnDestroy(): void {
-    if (this.wsSubscription) {
-      this.wsSubscription.unsubscribe();
-    }
+  refreshGames(): void {
+    if (this.isLoading) return;
+    
+    this.isLoading = true;
+    this.gameService.getAvailableGames().subscribe({
+      next: (games) => {
+        this.games = games;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error fetching games:', error);
+        this.isLoading = false;
+      }
+    });
   }
 
   navigateToCreate(): void {
     this.router.navigate(['/game/create']);
   }
 
-  joinGame(gameId: string): void {
-    this.wsService.joinGame(gameId);
-  }
-
-  private updateGame(updatedGame: Game): void {
-    const index = this.games.findIndex(game => game.id === updatedGame.id);
-    if (index !== -1) {
-      this.games[index] = updatedGame;
-    } else {
-      this.games.push(updatedGame);
-    }
-    this.games = [...this.games]; // Trigger change detection
+  joinGame(gameId: number): void {
+    if (this.joiningGame) return;
+    
+    this.joiningGame = gameId;
+    this.gameService.joinGame(gameId).subscribe({
+      next: (game) => {
+        console.log('Successfully joined game:', game);
+        this.router.navigate(['/game', gameId, 'lobby']);
+      },
+      error: (error) => {
+        console.error('Error joining game:', error);
+        this.joiningGame = null;
+      },
+      complete: () => {
+        this.joiningGame = null;
+      }
+    });
   }
 } 
