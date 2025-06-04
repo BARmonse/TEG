@@ -10,6 +10,8 @@ export interface GameDTO {
   currentPlayers: number;
   status: string;
   createdAt: string;
+  playerUsernames: string[];
+  creatorUsername: string;
 }
 
 @Injectable({

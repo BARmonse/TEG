@@ -41,8 +41,12 @@ public class TestEntitiesCreator {
                         .isActive(true)
                         .build()));
 
-        if (barmonseTestUser.getId() != null && guisoTestUser.getId() != null) {
-            log.info("Test users created successfully!");
-        }
+        User elitekronTestUser = userRepository.findByEmail("elitekron@gmail.com")
+                .orElseGet(() -> userRepository.save(User.builder()
+                        .username("elitekron")
+                        .email("elitekron@gmail.com")
+                        .password(passwordEncoder.encode("password"))
+                        .isActive(true)
+                        .build()));
     }
 } 

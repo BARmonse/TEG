@@ -123,6 +123,8 @@ public class GameService {
                 .currentPlayers(game.getPlayers().size())
                 .status(game.getStatus().toString())  // Use toString() instead of name().toLowerCase()
                 .createdAt(game.getCreatedAt())
+                .playerUsernames(game.getPlayers().stream().map(p -> p.getUser().getUsername()).collect(Collectors.toList()))
+                .creatorUsername(game.getCreatedBy().getUsername())
                 .build();
     }
 } 

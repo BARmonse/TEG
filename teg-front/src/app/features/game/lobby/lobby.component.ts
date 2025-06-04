@@ -197,9 +197,9 @@ export interface LobbyEvent {
     }
   `],
   template: `
-    <div class="lobby-container">
+    <div *ngIf="!isLoading" class="lobby-container">
       <div class="lobby-header">
-        <h1 class="lobby-title">Game Lobby</h1>
+        <h1 class="lobby-title">{{ gameName }}</h1>
         <span class="role-badge" [class]="isCreator ? 'creator-badge' : 'player-badge'">
           {{ isCreator ? 'Creator' : 'Player' }}
         </span>
@@ -251,6 +251,9 @@ export interface LobbyEvent {
         </button>
       </div>
     </div>
+    <div *ngIf="isLoading" class="loading-container">
+      <div class="loader"></div>
+    </div>
   `,
   animations: [
     trigger('playerAnimation', [
@@ -274,6 +277,8 @@ export class LobbyComponent implements OnInit, OnDestroy {
   lastMessage: LobbyEvent | null = null;
   currentUsername: string = '';
   isLeaving = false;
+  isLoading = true;
+  gameName: string = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -287,24 +292,32 @@ export class LobbyComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.gameId = Number(this.route.snapshot.paramMap.get('id'));
-    
     if (!this.gameId) {
       this.router.navigate(['/games']);
       return;
     }
-
-    // Add ourselves to the players list initially if we're the creator
-    if (this.currentUsername) {
-      this.players = [this.currentUsername];
-      this.isCreator = true;
-      this.creatorUsername = this.currentUsername;
-    }
-
-    // Subscribe to WebSocket messages for this game
-    this.subscribeToGameEvents();
-
-    // Join the game
-    this.wsService.joinGame(this.gameId.toString());
+    // Fetch game info and players before showing lobby
+    this.isLoading = true;
+    this.gameService.getGame(this.gameId).subscribe({
+      next: (game) => {
+        // Ensure creator is always first in the players list
+        const others = (game.playerUsernames || []).filter(u => u !== game.creatorUsername);
+        this.players = [game.creatorUsername, ...others];
+        this.maxPlayers = game.maxPlayers;
+        this.gameName = game.name;
+        this.creatorUsername = game.creatorUsername;
+        this.isCreator = this.currentUsername === this.creatorUsername;
+        this.isLoading = false;
+        // Subscribe to WebSocket events after initial load
+        this.subscribeToGameEvents();
+        // Join the game via WebSocket
+        this.wsService.joinGame(this.gameId.toString());
+      },
+      error: () => {
+        this.isLoading = false;
+        this.router.navigate(['/games']);
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -335,11 +348,6 @@ export class LobbyComponent implements OnInit, OnDestroy {
       case 'USER_JOINED':
         if (event.username && !this.players.includes(event.username)) {
           this.players.push(event.username);
-          // If this is the first user (creator)
-          if (this.players.length === 1) {
-            this.creatorUsername = event.username;
-            this.isCreator = event.username === this.currentUsername;
-          }
         }
         break;
 
@@ -361,6 +369,10 @@ export class LobbyComponent implements OnInit, OnDestroy {
         // Error is already shown through lastMessage
         break;
     }
+
+    // Always keep creator first
+    const others = this.players.filter(u => u !== this.creatorUsername);
+    this.players = [this.creatorUsername, ...others];
   }
 
   leaveGame() {

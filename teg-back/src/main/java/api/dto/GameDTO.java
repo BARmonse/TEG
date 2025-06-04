@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -18,4 +19,6 @@ public class GameDTO {
     private Integer currentPlayers;
     private String status;
     private LocalDateTime createdAt;
+    private List<String> playerUsernames;
+    private String creatorUsername;
 }
