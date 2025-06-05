@@ -277,6 +277,7 @@ export class LobbyComponent implements OnInit, OnDestroy {
   isLeaving = false;
   isLoading = true;
   gameName: string = '';
+  creatorId: number | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -312,13 +313,24 @@ export class LobbyComponent implements OnInit, OnDestroy {
 
   private setGameState(game: GameDTO) {
     console.log('Game state:', game);
-    const others = (game.players || []).map((p: GamePlayerDTO) => p.user.username).filter((u: string) => u !== game.createdBy.username);
-    this.players = [game.createdBy.username, ...others].map((username: string) => ({ username } as UserDTO));
+
+    // Extract all UserDTOs from GamePlayerDTOs
+    const allUsers: UserDTO[] = (game.players || []).map((p: GamePlayerDTO) => p.user);
+
+    // Find the creator
+    const creator = allUsers.find(u => u.id === game.createdBy.id);
+
+    // Others are all users except the creator
+    const others = allUsers.filter(u => u.id !== game.createdBy.id);
+
+    // Set players: creator first, then others
+    this.players = creator ? [creator, ...others] : others;
+
     this.maxPlayers = game.maxPlayers;
     this.gameName = game.name;
     this.creatorUsername = game.createdBy.username;
+    this.creatorId = game.createdBy.id;
     this.isCreator = this.currentUsername === this.creatorUsername;
-    console.log('Players in lobby:', this.players);
   }
 
   ngOnDestroy() {
