@@ -2,17 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-
-export interface GameDTO {
-  id: number;
-  name: string;
-  maxPlayers: number;
-  currentPlayers: number;
-  status: string;
-  createdAt: string;
-  playerUsernames: string[];
-  creatorUsername: string;
-}
+import { GameDTO, UserDTO, GamePlayerDTO } from '../dto/game.dto';
 
 @Injectable({
   providedIn: 'root'
@@ -42,16 +32,16 @@ export class GameService {
     );
   }
 
-  joinGame(gameId: number): Observable<GameDTO> {
+  joinGame(gameId: number, userId: number): Observable<GameDTO> {
     return this.http.post<GameDTO>(
-      `${this.apiUrl}/join/${gameId}`,
+      `${this.apiUrl}/join/${gameId}/${userId}`,
       null
     );
   }
 
-  cancelGame(gameId: number): Observable<void> {
-    return this.http.delete<void>(
-      `${this.apiUrl}/${gameId}/leave`
+  leaveGame(gameId: number, userId: number): Observable<GameDTO> {
+    return this.http.post<GameDTO>(
+      `${this.apiUrl}/leave/${gameId}/${userId}`, null
     );
   }
 } 

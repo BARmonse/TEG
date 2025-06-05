@@ -147,14 +147,14 @@ import { ActiveUsersComponent } from '../../shared/components/active-users/activ
       </div>
 
       <div class="quick-actions">
-        <a routerLink="/game" class="action-card">
+        <a routerLink="/games" class="action-card">
           <h2 class="action-title">Join a Game</h2>
           <p class="action-description">
             Browse available games or create your own to start playing
           </p>
         </a>
 
-        <a routerLink="/game/create" class="action-card">
+        <a routerLink="/games/create" class="action-card">
           <h2 class="action-title">Create New Game</h2>
           <p class="action-description">
             Set up a new game and invite other players to join

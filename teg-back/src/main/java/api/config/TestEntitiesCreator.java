@@ -30,6 +30,9 @@ public class TestEntitiesCreator {
                         .username("barmonse")
                         .email("barmonse@gmail.com")
                         .password(passwordEncoder.encode("password"))
+                        .gamesPlayed(0)
+                        .gamesWon(0)
+                        .gamesLost(0)
                         .isActive(true)
                         .build()));
 
@@ -38,6 +41,9 @@ public class TestEntitiesCreator {
                         .username("guiso")
                         .email("guiso@gmail.com")
                         .password(passwordEncoder.encode("password"))
+                        .gamesPlayed(0)
+                        .gamesWon(0)
+                        .gamesLost(0)
                         .isActive(true)
                         .build()));
 
@@ -46,6 +52,20 @@ public class TestEntitiesCreator {
                         .username("elitekron")
                         .email("elitekron@gmail.com")
                         .password(passwordEncoder.encode("password"))
+                        .gamesPlayed(0)
+                        .gamesWon(0)
+                        .gamesLost(0)
+                        .isActive(true)
+                        .build()));
+
+        User veritoUser = userRepository.findByEmail("verito@gmail.com")
+                .orElseGet(() -> userRepository.save(User.builder()
+                        .username("verito")
+                        .email("verito@gmail.com")
+                        .password(passwordEncoder.encode("password"))
+                        .gamesPlayed(0)
+                        .gamesWon(0)
+                        .gamesLost(0)
                         .isActive(true)
                         .build()));
     }

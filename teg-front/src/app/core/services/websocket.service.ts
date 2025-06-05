@@ -170,28 +170,6 @@ export class WebSocketService {
     }
   }
 
-  public joinGame(gameId: string): void {
-    if (this.client.connected) {
-      this.client.publish({
-        destination: `/app/game/${gameId}/join`,
-        body: JSON.stringify({})
-      });
-    } else {
-      console.warn('WebSocket is not connected, cannot join game:', gameId);
-    }
-  }
-
-  public leaveGame(gameId: string): void {
-    if (this.client.connected) {
-      this.client.publish({
-        destination: `/app/game/${gameId}/leave`,
-        body: JSON.stringify({})
-      });
-    } else {
-      console.warn('WebSocket is not connected, cannot leave game:', gameId);
-    }
-  }
-
   public startGame(gameId: string): void {
     if (this.client.connected) {
       this.client.publish({

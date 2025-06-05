@@ -4,22 +4,23 @@ import api.dto.GameDTO;
 import api.model.*;
 import api.repository.GameRepository;
 import api.repository.UserRepository;
+import api.util.GameDtoMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class GameService {
+    private final SimpMessagingTemplate messagingTemplate;
     private final GameRepository gameRepository;
+    private final UserService userService;
     private final UserRepository userRepository;
 
     @Transactional
@@ -50,25 +51,24 @@ public class GameService {
         // Update the GamePlayerId with the new game ID
         gamePlayer.getId().setGameId(game.getId());
 
-        return convertToDTO(game);
+        return GameDtoMapper.toGameDTO(game);
     }
 
     @Transactional(readOnly = true)
     public List<GameDTO> getAvailableGames() {
         return gameRepository.findByStatus(GameStatus.WAITING).stream()
-                .map(this::convertToDTO)
+                .map(GameDtoMapper::toGameDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public GameDTO getGame(Long id) {
-        Game game = gameRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Game not found"));
-        return convertToDTO(game);
+    public Game getGameOrThrowException(Long id) {
+        return (gameRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Game not found")));
     }
 
     @Transactional
-    public void joinGame(Long gameId, String username) {
+    public Game joinGame(Long gameId, Long userId) {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
 
@@ -80,27 +80,53 @@ public class GameService {
             throw new RuntimeException("Game is full");
         }
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userService.findByIdOrThrowException(userId);
 
         // Check if user is already in the game
         boolean isAlreadyInGame = game.getPlayers().stream()
                 .anyMatch(player -> player.getUser().getId().equals(user.getId()));
 
-        if (!isAlreadyInGame) {
-            // Determine the next available color
-            PlayerColor nextColor = getNextAvailableColor(game);
+        if (isAlreadyInGame) {
+            throw new RuntimeException("User is already in game");
+        }
 
-            GamePlayer gamePlayer = GamePlayer.builder()
-                    .id(new GamePlayerId(game.getId(), user.getId()))
-                    .game(game)
-                    .user(user)
-                    .color(nextColor)
-                    .turnOrder(game.getPlayers().size() + 1)
-                    .build();
+        // Determine the next available color
+        PlayerColor nextColor = getNextAvailableColor(game);
 
-            game.getPlayers().add(gamePlayer);
-            gameRepository.save(game);
+        GamePlayer gamePlayer = GamePlayer.builder()
+                .id(new GamePlayerId(game.getId(), user.getId()))
+                .game(game)
+                .user(user)
+                .color(nextColor)
+                .turnOrder(game.getPlayers().size() + 1)
+                .build();
+
+        game.getPlayers().add(gamePlayer);
+        game = gameRepository.save(game);
+
+        messagingTemplate.convertAndSend(
+                "/topic/game-updates",
+                Map.of(
+                        "type", "USER_JOINED",
+                        "payload", Map.of(
+                                "gameId", game.getId(),
+                                "user", GameDtoMapper.toUserDTO(user))
+                )
+        );
+
+        return game;
+    }
+
+    @Transactional
+    public Game leaveGame(Long gameId, Long userId) {
+        try {
+            Game game = gameRepository.findById(gameId)
+                    .orElseThrow(() -> new RuntimeException("Game not found"));
+            game.getPlayers().removeIf(gp -> gp.getUser().getId().equals(userId));
+            return gameRepository.save(game);
+        } catch (Exception e) {
+            log.error("User {} could not leave game {}. Exception was: {}.", userId, gameId, e.getMessage());
+            throw new RuntimeException("Error leaving game");
         }
     }
 
@@ -113,18 +139,5 @@ public class GameService {
                 .filter(color -> !usedColors.contains(color))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No available colors"));
-    }
-
-    private GameDTO convertToDTO(Game game) {
-        return GameDTO.builder()
-                .id(game.getId())
-                .name(game.getName())
-                .maxPlayers(game.getMaxPlayers())
-                .currentPlayers(game.getPlayers().size())
-                .status(game.getStatus().toString())  // Use toString() instead of name().toLowerCase()
-                .createdAt(game.getCreatedAt())
-                .playerUsernames(game.getPlayers().stream().map(p -> p.getUser().getUsername()).collect(Collectors.toList()))
-                .creatorUsername(game.getCreatedBy().getUsername())
-                .build();
     }
 } 

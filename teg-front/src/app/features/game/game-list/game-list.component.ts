@@ -1,7 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { GameService, GameDTO } from '../../../core/services/game.service';
+import { GameService } from '../../../core/services/game.service';
+import { GameDTO } from '../../../core/dto/game.dto';
+import { firstValueFrom } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-game-list',
@@ -136,7 +139,7 @@ import { GameService, GameDTO } from '../../../core/services/game.service';
         >
           <div class="game-name">{{ game.name }}</div>
           <div class="game-info">
-            Players: {{ game.currentPlayers }}/{{ game.maxPlayers }}
+            Players: {{ game.players.length }}/{{ game.maxPlayers }}
           </div>
           <div class="game-info">
             Created: {{ game.createdAt | date:'short' }}
@@ -165,7 +168,8 @@ export class GameListComponent implements OnInit {
 
   constructor(
     private gameService: GameService,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -189,25 +193,26 @@ export class GameListComponent implements OnInit {
   }
 
   navigateToCreate(): void {
-    this.router.navigate(['/game/create']);
+    this.router.navigate(['/games/create']);
   }
 
   joinGame(gameId: number): void {
     if (this.joiningGame) return;
-    
     this.joiningGame = gameId;
-    this.gameService.joinGame(gameId).subscribe({
-      next: (game) => {
-        console.log('Successfully joined game:', game);
-        this.router.navigate(['/game', gameId, 'lobby']);
-      },
-      error: (error) => {
-        console.error('Error joining game:', error);
-        this.joiningGame = null;
-      },
-      complete: () => {
-        this.joiningGame = null;
-      }
+    const userId = this.authService.currentUserValue?.id;
+    if (!userId) {
+      this.joiningGame = null;
+      return;
+    }
+    const minLoaderTime = new Promise(resolve => setTimeout(resolve, 2000));
+    const joinGame$ = firstValueFrom(this.gameService.joinGame(gameId, userId));
+    Promise.all([minLoaderTime, joinGame$]).then(([_, game]) => {
+      this.router.navigate(['/games', gameId, 'lobby'], { state: { game } });
+    }).catch((error) => {
+      console.error('Error joining game:', error);
+      this.joiningGame = null;
+    }).finally(() => {
+      this.joiningGame = null;
     });
   }
 } 

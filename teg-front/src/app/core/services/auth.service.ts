@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 
 export interface AuthResponse {
   token: string;
+  id: number;
   username: string;
   email: string;
   gamesPlayed: number;

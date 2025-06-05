@@ -26,8 +26,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationResponse register(UserRegistrationDTO request) {
-        log.info("Attempting to register user: {}", request.getUsername());
-        
+
         // Check if username or email already exists
         if (userRepository.existsByUsername(request.getUsername())) {
             log.warn("Registration failed: Username already exists - {}", request.getUsername());
@@ -47,13 +46,13 @@ public class AuthenticationService {
         user.setGamesPlayed(0);
         user.setGamesWon(0);
 
-        userRepository.save(user);
-        log.info("User registered successfully: {}", user.getUsername());
+        user = userRepository.save(user);
 
         String token = jwtService.generateToken(user);
         
         return AuthenticationResponse.builder()
                 .token(token)
+                .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .gamesPlayed(user.getGamesPlayed())
@@ -88,10 +87,10 @@ public class AuthenticationService {
             userRepository.save(user);
 
             String token = jwtService.generateToken(user);
-            log.info("User authenticated successfully: {}", user.getUsername());
 
             return AuthenticationResponse.builder()
                     .token(token)
+                    .id(user.getId())
                     .username(user.getUsername())
                     .email(user.getEmail())
                     .gamesPlayed(user.getGamesPlayed())
@@ -118,6 +117,7 @@ public class AuthenticationService {
                 });
 
         return AuthenticationResponse.builder()
+                .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .gamesPlayed(user.getGamesPlayed())

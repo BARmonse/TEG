@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { WebSocketService } from '../../../core/services/websocket.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { GameDTO, UserDTO, GamePlayerDTO } from '../../../core/dto/game.dto';
 import { GameService } from '../../../core/services/game.service';
 import { Subscription } from 'rxjs';
 import { animate, style, transition, trigger } from '@angular/animations';
@@ -200,9 +201,6 @@ export interface LobbyEvent {
     <div *ngIf="!isLoading" class="lobby-container">
       <div class="lobby-header">
         <h1 class="lobby-title">{{ gameName }}</h1>
-        <span class="role-badge" [class]="isCreator ? 'creator-badge' : 'player-badge'">
-          {{ isCreator ? 'Creator' : 'Player' }}
-        </span>
       </div>
 
       <div class="lobby-content">
@@ -217,11 +215,11 @@ export interface LobbyEvent {
                  class="player-card"
                  [@playerAnimation]>
               <div class="player-avatar">
-                {{ player.charAt(0).toUpperCase() }}
+                {{ player.username.charAt(0).toUpperCase() }}
               </div>
               <div class="player-info">
-                <div class="player-name">{{player}}</div>
-                <div class="player-status" *ngIf="player === creatorUsername">Game Creator</div>
+                <div class="player-name">{{player.username}}</div>
+                <div class="player-status" *ngIf="player.id === creatorId">Game Creator</div>
               </div>
             </div>
           </div>
@@ -270,7 +268,7 @@ export interface LobbyEvent {
 export class LobbyComponent implements OnInit, OnDestroy {
   private gameId!: number;
   private subscriptions: Subscription[] = [];
-  players: string[] = [];
+  players: UserDTO[] = [];
   maxPlayers: number = 6;
   isCreator: boolean = false;
   creatorUsername: string = '';
@@ -296,22 +294,14 @@ export class LobbyComponent implements OnInit, OnDestroy {
       this.router.navigate(['/games']);
       return;
     }
-    // Fetch game info and players before showing lobby
+
+    // Always fetch the latest game data from the backend when entering the lobby
     this.isLoading = true;
     this.gameService.getGame(this.gameId).subscribe({
       next: (game) => {
-        // Ensure creator is always first in the players list
-        const others = (game.playerUsernames || []).filter(u => u !== game.creatorUsername);
-        this.players = [game.creatorUsername, ...others];
-        this.maxPlayers = game.maxPlayers;
-        this.gameName = game.name;
-        this.creatorUsername = game.creatorUsername;
-        this.isCreator = this.currentUsername === this.creatorUsername;
+        this.setGameState(game);
         this.isLoading = false;
-        // Subscribe to WebSocket events after initial load
         this.subscribeToGameEvents();
-        // Join the game via WebSocket
-        this.wsService.joinGame(this.gameId.toString());
       },
       error: () => {
         this.isLoading = false;
@@ -320,83 +310,63 @@ export class LobbyComponent implements OnInit, OnDestroy {
     });
   }
 
+  private setGameState(game: GameDTO) {
+    console.log('Game state:', game);
+    const others = (game.players || []).map((p: GamePlayerDTO) => p.user.username).filter((u: string) => u !== game.createdBy.username);
+    this.players = [game.createdBy.username, ...others].map((username: string) => ({ username } as UserDTO));
+    this.maxPlayers = game.maxPlayers;
+    this.gameName = game.name;
+    this.creatorUsername = game.createdBy.username;
+    this.isCreator = this.currentUsername === this.creatorUsername;
+    console.log('Players in lobby:', this.players);
+  }
+
   ngOnDestroy() {
     // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    
-    // Leave the game if we're not starting it
-    if (this.lastMessage?.type !== 'GAME_STARTED') {
-      this.wsService.leaveGame(this.gameId.toString());
-    }
   }
 
   private subscribeToGameEvents() {
     this.subscriptions.push(
       this.wsService.messages$.subscribe(message => {
-        if (message.type === 'LOBBY_EVENT') {
-          const event = message.payload as LobbyEvent;
-          this.handleLobbyEvent(event);
+        // Debug: log all messages
+        console.log('WebSocket message:', message);
+  
+        if (message.type === 'USER_JOINED') {
+          const { gameId, user } = message.payload;
+          if (this.gameId === gameId) {
+            // Only add if not already present
+            if (!this.players.some(u => u.id === user.id)) {
+              this.players.push(user);
+            }
+          }
         }
+  
+        if (message.type === 'USER_LEFT') {
+          const { gameId, userId } = message.payload;
+          if (this.gameId === gameId) {
+            this.players = this.players.filter(u => u.id !== userId);
+          }
+        }
+
+  
       })
     );
   }
 
-  private handleLobbyEvent(event: LobbyEvent) {
-    this.lastMessage = event;
-
-    switch (event.type) {
-      case 'USER_JOINED':
-        if (event.username && !this.players.includes(event.username)) {
-          this.players.push(event.username);
-        }
-        break;
-
-      case 'USER_LEFT':
-        if (event.username) {
-          this.players = this.players.filter(player => player !== event.username);
-        }
-        break;
-
-      case 'GAME_STARTED':
-        this.router.navigate(['/game', this.gameId, 'play']);
-        break;
-
-      case 'GAME_CANCELLED':
-        this.router.navigate(['/games']);
-        break;
-
-      case 'ERROR':
-        // Error is already shown through lastMessage
-        break;
-    }
-
-    // Always keep creator first
-    const others = this.players.filter(u => u !== this.creatorUsername);
-    this.players = [this.creatorUsername, ...others];
-  }
-
   leaveGame() {
     if (this.isLeaving) return;
-    
+    if (!this.authService.currentUserValue) return;
+
     this.isLeaving = true;
-    
-    // If we're the creator or the last player, cancel the game
-    if (this.isCreator || this.players.length === 1) {
-      this.gameService.cancelGame(this.gameId).subscribe({
-        next: () => {
-          this.wsService.leaveGame(this.gameId.toString());
-          this.router.navigate(['/games']);
-        },
-        error: (error) => {
-          console.error('Error cancelling game:', error);
-          this.isLeaving = false;
-        }
-      });
-    } else {
-      // Just leave the game
-      this.wsService.leaveGame(this.gameId.toString());
-      this.router.navigate(['/games']);
-    }
+    this.gameService.leaveGame(this.gameId, this.authService.currentUserValue.id).subscribe({
+      next: () => {
+        this.router.navigate(['/games']);
+      },
+      error: () => {
+        this.isLeaving = false;
+      }
+    });
   }
 
   startGame() {

@@ -142,8 +142,7 @@ export class CreateGameComponent {
       this.gameService.createGame(gameName, maxPlayers).subscribe({
         next: (game) => {
           console.log('Game created:', game);
-          this.wsService.joinGame(game.id.toString());
-          this.router.navigate(['/game', game.id, 'lobby']);
+          this.router.navigate(['/games', game.id, 'lobby']);
         },
         error: (error) => {
           console.error('Error creating game:', error);

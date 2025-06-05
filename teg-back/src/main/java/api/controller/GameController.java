@@ -2,7 +2,12 @@ package api.controller;
 
 import api.dto.CreateGameRequest;
 import api.dto.GameDTO;
+import api.dto.GamePlayerDTO;
+import api.dto.UserDTO;
+import api.model.Game;
+import api.model.User;
 import api.service.GameService;
+import api.util.GameDtoMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/game")
@@ -52,7 +58,6 @@ public class GameController {
 
     @GetMapping("/list")
     public ResponseEntity<List<GameDTO>> getAvailableGames() {
-        log.info("Getting available games");
         try {
             List<GameDTO> games = gameService.getAvailableGames();
             return ResponseEntity.ok(games);
@@ -64,36 +69,47 @@ public class GameController {
 
     @GetMapping("/{id}")
     public ResponseEntity<GameDTO> getGame(@PathVariable Long id) {
-        log.info("Getting game with id: {}", id);
         try {
-            GameDTO game = gameService.getGame(id);
-            return ResponseEntity.ok(game);
+            return ResponseEntity.ok(GameDtoMapper.toGameDTO(gameService.getGameOrThrowException(id)));
         } catch (Exception e) {
             log.error("Error getting game", e);
             throw new RuntimeException("Failed to get game: " + e.getMessage());
         }
     }
 
-    @PostMapping("/join/{id}")
+    @PostMapping("/join/{gameId}/{userId}")
     public ResponseEntity<GameDTO> joinGame(
-            @PathVariable Long id,
-            Authentication authentication
+            @PathVariable("gameId") Long gameId,
+            @PathVariable("userId") Long userId
     ) {
-        log.info("User {} attempting to join game {}", authentication.getName(), id);
         try {
-            gameService.joinGame(id, authentication.getName());
-            GameDTO game = gameService.getGame(id);
-            
-            // Broadcast to all users via WebSocket
-            messagingTemplate.convertAndSend(
-                "/topic/game-updates",
-                Map.of("type", "GAME_UPDATED", "payload", game)
-            );
+            Game game = gameService.joinGame(gameId, userId);
+            GameDTO dto = GameDtoMapper.toGameDTO(game);
 
-            return ResponseEntity.ok(game);
+            return ResponseEntity.ok(dto);
         } catch (Exception e) {
             log.error("Error joining game", e);
             throw new RuntimeException("Failed to join game: " + e.getMessage());
         }
+    }
+
+    @PostMapping("leave/{gameId}/{userId}")
+    public ResponseEntity<GameDTO> leaveGame(
+            @PathVariable("gameId") Long gameId,
+            @PathVariable("userId") Long userId
+    ) {
+        Game game = gameService.leaveGame(gameId, userId);
+        // Broadcast only the userId and gameId
+        messagingTemplate.convertAndSend(
+            "/topic/game-updates",
+            Map.of(
+                "type", "USER_LEFT",
+                "payload", Map.of(
+                    "gameId", gameId,
+                    "userId", userId
+                )
+            )
+        );
+        return ResponseEntity.ok(GameDtoMapper.toGameDTO(game));
     }
 } 
