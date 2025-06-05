@@ -11,5 +11,4 @@ public class UserDTO {
     private Long id;
     private String username;
     private String email;
-    // Add other fields as needed, but NOT password!
-} 
+}

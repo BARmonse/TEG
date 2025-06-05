@@ -211,15 +211,15 @@ export interface LobbyEvent {
           </div>
 
           <div class="players-grid">
-            <div *ngFor="let player of players" 
+            <div *ngFor="let player of players"
                  class="player-card"
-                 [@playerAnimation]>
+                 [ngStyle]="getPlayerBorderStyle(player.color)">
               <div class="player-avatar">
-                {{ player.username.charAt(0).toUpperCase() }}
+                {{ player.user.username.charAt(0).toUpperCase() }}
               </div>
               <div class="player-info">
-                <div class="player-name">{{player.username}}</div>
-                <div class="player-status" *ngIf="player.id === creatorId">Game Creator</div>
+                <div class="player-name">{{ player.user.username }}</div>
+                <div class="player-status" *ngIf="player.user.id === creatorId">Game Creator</div>
               </div>
             </div>
           </div>
@@ -268,7 +268,7 @@ export interface LobbyEvent {
 export class LobbyComponent implements OnInit, OnDestroy {
   private gameId!: number;
   private subscriptions: Subscription[] = [];
-  players: UserDTO[] = [];
+  players: GamePlayerDTO[] = [];
   maxPlayers: number = 6;
   isCreator: boolean = false;
   creatorUsername: string = '';
@@ -314,23 +314,16 @@ export class LobbyComponent implements OnInit, OnDestroy {
   private setGameState(game: GameDTO) {
     console.log('Game state:', game);
 
-    // Extract all UserDTOs from GamePlayerDTOs
-    const allUsers: UserDTO[] = (game.players || []).map((p: GamePlayerDTO) => p.user);
+    // Put the creator first, then the rest
+    const creatorPlayer = (game.players || []).find(p => p.user.id === game.createdBy.id);
+    const others = (game.players || []).filter(p => p.user.id !== game.createdBy.id);
 
-    // Find the creator
-    const creator = allUsers.find(u => u.id === game.createdBy.id);
-
-    // Others are all users except the creator
-    const others = allUsers.filter(u => u.id !== game.createdBy.id);
-
-    // Set players: creator first, then others
-    this.players = creator ? [creator, ...others] : others;
+    this.players = creatorPlayer ? [creatorPlayer, ...others] : others;
 
     this.maxPlayers = game.maxPlayers;
     this.gameName = game.name;
-    this.creatorUsername = game.createdBy.username;
     this.creatorId = game.createdBy.id;
-    this.isCreator = this.currentUsername === this.creatorUsername;
+    this.isCreator = this.currentUsername === game.createdBy.username;
   }
 
   ngOnDestroy() {
@@ -348,8 +341,8 @@ export class LobbyComponent implements OnInit, OnDestroy {
           const { gameId, user } = message.payload;
           if (this.gameId === gameId) {
             // Only add if not already present
-            if (!this.players.some(u => u.id === user.id)) {
-              this.players.push(user);
+            if (!this.players.some(u => u.user.id === user.id)) {
+              this.players.push({ user, color: user.color, turnOrder: user.turnOrder, joinedAt: user.joinedAt, id: user.id });
             }
           }
         }
@@ -357,7 +350,7 @@ export class LobbyComponent implements OnInit, OnDestroy {
         if (message.type === 'USER_LEFT') {
           const { gameId, userId } = message.payload;
           if (this.gameId === gameId) {
-            this.players = this.players.filter(u => u.id !== userId);
+            this.players = this.players.filter(u => u.user.id !== userId);
           }
         }
 
@@ -384,6 +377,24 @@ export class LobbyComponent implements OnInit, OnDestroy {
   startGame() {
     if (this.isCreator && this.players.length >= 2) {
       this.wsService.startGame(this.gameId.toString());
+    }
+  }
+
+  getPlayerBorderStyle(color: string): { [key: string]: string } {
+    return {
+      'border': '3px solid ' + this.getColorHex(color)
+    };
+  }
+
+  getColorHex(color: string): string {
+    switch (color?.toLowerCase()) {
+      case 'red': return '#ef4444';      // Tailwind red-500
+      case 'blue': return '#3b82f6';     // Tailwind blue-500
+      case 'green': return '#22c55e';    // Tailwind green-500
+      case 'yellow': return '#eab308';   // Tailwind yellow-500
+      case 'purple': return '#a21caf';   // Tailwind purple-700
+      case 'black': return '#111827';    // Tailwind gray-900
+      default: return '#e5e7eb';         // Tailwind gray-200 (fallback)
     }
   }
 } 

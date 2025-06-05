@@ -5,6 +5,7 @@ import api.dto.GameDTO;
 import api.dto.GamePlayerDTO;
 import api.dto.UserDTO;
 import api.model.Game;
+import api.model.GamePlayer;
 import api.model.User;
 import api.service.GameService;
 import api.util.GameDtoMapper;
@@ -85,6 +86,22 @@ public class GameController {
         try {
             Game game = gameService.joinGame(gameId, userId);
             GameDTO dto = GameDtoMapper.toGameDTO(game);
+
+            GamePlayerDTO newPlayer = dto.getPlayers().stream()
+                .filter(gp -> gp.getUser().getId().equals(userId))
+                .findFirst().orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Broadcast only the new GamePlayerDTO and gameId
+            messagingTemplate.convertAndSend(
+                "/topic/game-updates",
+                Map.of(
+                    "type", "USER_JOINED",
+                    "payload", Map.of(
+                        "gameId", game.getId(),
+                        "player", newPlayer
+                    )
+                )
+            );
 
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
