@@ -1,18 +1,26 @@
 package api.model;
 
 import jakarta.persistence.Embeddable;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.io.Serializable;
 
 @Embeddable
-@NoArgsConstructor
-@AllArgsConstructor
 @Getter
 @Setter
-@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
 public class PlayerCountryId implements Serializable {
-    private Long gameId;
-    private Long userId;
+
+    private GamePlayerId gamePlayerId;
+
     private String countryId;
+
+    public PlayerCountryId(Long gameId, Long userId, String countryId) {
+        this.gamePlayerId = new GamePlayerId(gameId, userId);
+        this.countryId = countryId;
+    }
 }

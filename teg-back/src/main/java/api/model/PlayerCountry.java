@@ -11,11 +11,12 @@ import lombok.*;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class PlayerCountry {
+
     @EmbeddedId
     private PlayerCountryId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId
+    @MapsId("gamePlayerId")
     @JoinColumns({
             @JoinColumn(name = "game_id", referencedColumnName = "game_id"),
             @JoinColumn(name = "user_id", referencedColumnName = "user_id")
