@@ -15,6 +15,16 @@ export interface LobbyEvent {
     message: string;
 }
 
+// Add PlayerColor list for selection
+const PLAYER_COLORS = [
+  { name: 'Red', value: 'RED', hex: '#ef4444' },
+  { name: 'Blue', value: 'BLUE', hex: '#3b82f6' },
+  { name: 'Green', value: 'GREEN', hex: '#22c55e' },
+  { name: 'Yellow', value: 'YELLOW', hex: '#eab308' },
+  { name: 'Black', value: 'BLACK', hex: '#111827' },
+  { name: 'White', value: 'WHITE', hex: '#f3f4f6', text: '#111827' }
+];
+
 @Component({
   selector: 'app-lobby',
   standalone: true,
@@ -220,6 +230,24 @@ export interface LobbyEvent {
               <div class="player-info">
                 <div class="player-name">{{ player.user.username }}</div>
                 <div class="player-status" *ngIf="player.user.id === creatorId">Game Creator</div>
+                <!-- Color selector for current user -->
+                <div *ngIf="player.user.username === currentUsername" class="mt-2">
+                  <label class="block text-xs text-gray-500 mb-1">Select your color:</label>
+                  <div class="flex gap-2 flex-wrap">
+                    <button *ngFor="let color of playerColors"
+                      class="w-8 h-8 rounded-full border-2 flex items-center justify-center focus:outline-none"
+                      [ngStyle]="{
+                        'background-color': color.hex,
+                        'color': color.text || '#fff',
+                        'border-color': player.color === color.value ? '#6366f1' : '#e5e7eb',
+                        'box-shadow': player.color === color.value ? '0 0 0 2px #6366f1' : 'none'
+                      }"
+                      [disabled]="player.color === color.value || isColorTaken(color.value)"
+                      (click)="changeColor(color.value)">
+                      <span *ngIf="player.color === color.value">✓</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -278,6 +306,7 @@ export class LobbyComponent implements OnInit, OnDestroy {
   isLoading = true;
   gameName: string = '';
   creatorId: number | null = null;
+  playerColors = PLAYER_COLORS;
 
   constructor(
     private route: ActivatedRoute,
@@ -368,6 +397,15 @@ export class LobbyComponent implements OnInit, OnDestroy {
           }
         }
 
+        if (message.type === 'PLAYER_COLOR_CHANGED') {
+          const { gameId, userId, color } = message.payload;
+          if (this.gameId === gameId) {
+            this.players = this.players.map(player =>
+              player.user.id === userId ? { ...player, color } : player
+            );
+          }
+        }
+
       })
     );
   }
@@ -409,5 +447,23 @@ export class LobbyComponent implements OnInit, OnDestroy {
       case 'black': return '#111827';    // Tailwind gray-900
       default: return '#e5e7eb';         // Tailwind gray-200 (fallback)
     }
+  }
+
+  isColorTaken(color: string): boolean {
+    return this.players.some(p => p.color === color && p.user.username !== this.currentUsername);
+  }
+
+  changeColor(color: string) {
+    const userId = this.authService.currentUserValue?.id;
+    if (!userId) return;
+    this.gameService.updatePlayerColor(this.gameId, userId, color).subscribe({
+      error: (err) => {
+        this.lastMessage = {
+          type: 'ERROR',
+          gameId: this.gameId,
+          message: err?.error?.message || 'Color already taken by another player.'
+        };
+      }
+    });
   }
 } 

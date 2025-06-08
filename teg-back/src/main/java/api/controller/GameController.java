@@ -4,6 +4,7 @@ import api.dto.CreateGameRequest;
 import api.dto.GameDTO;
 import api.dto.GamePlayerDTO;
 import api.dto.UserDTO;
+import api.dto.ColorDTO;
 import api.model.Game;
 import api.model.GamePlayer;
 import api.model.User;
@@ -128,5 +129,28 @@ public class GameController {
             )
         );
         return ResponseEntity.ok(GameDtoMapper.toGameDTO(game));
+    }
+
+    @PostMapping("/color/{gameId}/{userId}")
+    public ResponseEntity<GamePlayerDTO> updatePlayerColor(
+            @PathVariable("gameId") Long gameId,
+            @PathVariable("userId") Long userId,
+            @RequestBody ColorDTO colorDTO
+    ) {
+        String color = colorDTO.getColor();
+        GamePlayerDTO updatedPlayer = gameService.updatePlayerColor(gameId, userId, color);
+        // Broadcast color change
+        messagingTemplate.convertAndSend(
+            "/topic/game-updates",
+            Map.of(
+                "type", "PLAYER_COLOR_CHANGED",
+                "payload", Map.of(
+                    "gameId", gameId,
+                    "userId", userId,
+                    "color", color
+                )
+            )
+        );
+        return ResponseEntity.ok(updatedPlayer);
     }
 } 

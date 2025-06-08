@@ -44,4 +44,11 @@ export class GameService {
       `${this.apiUrl}/leave/${gameId}/${userId}`, null
     );
   }
+
+  updatePlayerColor(gameId: number, userId: number, color: string): Observable<GamePlayerDTO> {
+    return this.http.post<GamePlayerDTO>(
+      `${this.apiUrl}/color/${gameId}/${userId}`,
+      { color }
+    );
+  }
 } 

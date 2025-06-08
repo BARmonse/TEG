@@ -1,6 +1,7 @@
 package api.service;
 
 import api.dto.GameDTO;
+import api.dto.GamePlayerDTO;
 import api.model.*;
 import api.repository.GameRepository;
 import api.repository.UserRepository;
@@ -159,5 +160,25 @@ public class GameService {
                 .filter(color -> !usedColors.contains(color))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No available colors"));
+    }
+
+    @Transactional
+    public GamePlayerDTO updatePlayerColor(Long gameId, Long userId, String color) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new RuntimeException("Game not found"));
+        PlayerColor requestedColor = PlayerColor.valueOf(color.toUpperCase());
+        // Enforce uniqueness: check if any other player has this color
+        boolean colorTaken = game.getPlayers().stream()
+                .anyMatch(gp -> !gp.getUser().getId().equals(userId) && gp.getColor() == requestedColor);
+        if (colorTaken) {
+            throw new RuntimeException("Color already taken by another player");
+        }
+        GamePlayer gamePlayer = game.getPlayers().stream()
+                .filter(gp -> gp.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Player not found in game"));
+        gamePlayer.setColor(requestedColor);
+        gameRepository.save(game);
+        return GameDtoMapper.toGamePlayerDTO(gamePlayer);
     }
 } 
