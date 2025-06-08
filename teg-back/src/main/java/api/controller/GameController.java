@@ -3,11 +3,8 @@ package api.controller;
 import api.dto.CreateGameRequest;
 import api.dto.GameDTO;
 import api.dto.GamePlayerDTO;
-import api.dto.UserDTO;
 import api.dto.ColorDTO;
 import api.model.Game;
-import api.model.GamePlayer;
-import api.model.User;
 import api.service.GameService;
 import api.util.GameDtoMapper;
 import jakarta.validation.Valid;
@@ -20,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/game")
@@ -152,5 +148,14 @@ public class GameController {
             )
         );
         return ResponseEntity.ok(updatedPlayer);
+    }
+
+    @PostMapping("/start/{gameId}/{userId}")
+    public ResponseEntity<GameDTO> startGame(
+            @PathVariable("gameId") Long gameId,
+            @PathVariable("userId") Long userId
+    ) {
+        Game game = gameService.startGame(gameId, userId);
+        return ResponseEntity.ok(GameDtoMapper.toGameDTO(game));
     }
 } 

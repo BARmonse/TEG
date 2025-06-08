@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -15,4 +16,6 @@ public class GamePlayerDTO {
     private String color;
     private Integer turnOrder;
     private LocalDateTime joinedAt;
+    private String objective;
+    private List<String> countries;
 } 

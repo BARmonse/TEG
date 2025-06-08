@@ -1,0 +1,23 @@
+package api.model;
+
+public enum Objective {
+    // Conquer continents
+    CONQUER_NORTH_AMERICA_AND_AFRICA,
+    CONQUER_SOUTH_AMERICA_AND_ASIA,
+    CONQUER_EUROPE_AND_OCEANIA,
+    CONQUER_SOUTH_AMERICA_AND_AFRICA,
+    CONQUER_NORTH_AMERICA_AND_EUROPE,
+    CONQUER_ASIA_AND_OCEANIA,
+    // Conquer N countries
+    CONQUER_30_COUNTRIES,
+    CONQUER_24_COUNTRIES,
+    // Destroy color
+    DESTROY_RED,
+    DESTROY_BLUE,
+    DESTROY_GREEN,
+    DESTROY_YELLOW,
+    DESTROY_BLACK,
+    DESTROY_WHITE,
+    // Conquer 2 continents of your choice
+    CONQUER_TWO_CONTINENTS
+} 

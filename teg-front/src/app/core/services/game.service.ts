@@ -51,4 +51,11 @@ export class GameService {
       { color }
     );
   }
+
+  startGame(gameId: number, userId: number): Observable<GameDTO> {
+    return this.http.post<GameDTO>(
+      `${this.apiUrl}/start/${gameId}/${userId}`,
+      null
+    );
+  }
 } 

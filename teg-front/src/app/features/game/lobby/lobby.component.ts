@@ -7,6 +7,7 @@ import { GameDTO, GamePlayerDTO } from '../../../core/dto/game.dto';
 import { GameService } from '../../../core/services/game.service';
 import { Subscription } from 'rxjs';
 import { animate, style, transition, trigger } from '@angular/animations';
+import { Pipe, PipeTransform } from '@angular/core';
 
 export interface LobbyEvent {
     type: 'USER_JOINED' | 'USER_LEFT' | 'GAME_STARTED' | 'GAME_CANCELLED' | 'ERROR';
@@ -15,14 +16,13 @@ export interface LobbyEvent {
     message: string;
 }
 
-// Add PlayerColor list for selection
 const PLAYER_COLORS = [
   { name: 'Red', value: 'RED', hex: '#ef4444' },
   { name: 'Blue', value: 'BLUE', hex: '#3b82f6' },
   { name: 'Green', value: 'GREEN', hex: '#22c55e' },
   { name: 'Yellow', value: 'YELLOW', hex: '#eab308' },
   { name: 'Black', value: 'BLACK', hex: '#111827' },
-  { name: 'White', value: 'WHITE', hex: '#f3f4f6', text: '#111827' }
+  { name: 'White', value: 'WHITE', hex: '#f3f4f6' }
 ];
 
 @Component({
@@ -214,54 +214,79 @@ const PLAYER_COLORS = [
       </div>
 
       <div class="lobby-content">
-        <div class="players-section">
-          <div class="players-header">
-            <h2 class="players-title">Players</h2>
-            <span class="players-count">{{players.length}}/{{maxPlayers}}</span>
-          </div>
-
-          <div class="players-grid">
-            <div *ngFor="let player of players"
-                 class="player-card"
-                 [ngStyle]="getPlayerBorderStyle(player.color)">
-              <div class="player-avatar">
-                {{ player.user.username.charAt(0).toUpperCase() }}
+        <!-- Show map and player info if game started -->
+        <ng-container *ngIf="gameStatus === 'IN_PROGRESS'; else lobbyWaiting">
+          <div class="mb-8">
+            <h2 class="text-xl font-bold mb-2">Your Secret Objective</h2>
+            <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-4 text-blue-900">
+              {{ currentPlayer?.objective | titlecase | replaceUnderscores }}
+            </div>
+            <h2 class="text-xl font-bold mb-2">Your Countries</h2>
+            <div class="bg-white border border-gray-200 rounded p-4 mb-4">
+              <div class="flex flex-wrap gap-2">
+                <span *ngFor="let country of currentPlayer?.countries" class="inline-block px-3 py-1 rounded bg-gray-100 text-gray-700 text-xs font-medium border border-gray-300">
+                  {{ country | titlecase | replaceUnderscores }}
+                </span>
               </div>
-              <div class="player-info">
-                <div class="player-name">{{ player.user.username }}</div>
-                <div class="player-status" *ngIf="player.user.id === creatorId">Game Creator</div>
-                <!-- Color selector for current user -->
-                <div *ngIf="player.user.username === currentUsername" class="mt-2">
-                  <label class="block text-xs text-gray-500 mb-1">Select your color:</label>
-                  <div class="flex gap-2 flex-wrap">
-                    <button *ngFor="let color of playerColors"
-                      class="w-8 h-8 rounded-full border-2 flex items-center justify-center focus:outline-none"
-                      [ngStyle]="{
-                        'background-color': color.hex,
-                        'color': color.text || '#fff',
-                        'border-color': player.color === color.value ? '#6366f1' : '#e5e7eb',
-                        'box-shadow': player.color === color.value ? '0 0 0 2px #6366f1' : 'none'
-                      }"
-                      [disabled]="player.color === color.value || isColorTaken(color.value)"
-                      (click)="changeColor(color.value)">
-                      <span *ngIf="player.color === color.value">✓</span>
-                    </button>
+            </div>
+            <div class="mb-4">
+              <h2 class="text-xl font-bold mb-2">Map (Coming Soon)</h2>
+              <div class="w-full h-64 bg-gradient-to-br from-blue-200 to-purple-200 rounded flex items-center justify-center text-gray-400 font-bold text-2xl">
+                Map Placeholder
+              </div>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #lobbyWaiting>
+          <div class="players-section">
+            <div class="players-header">
+              <h2 class="players-title">Players</h2>
+              <span class="players-count">{{players.length}}/{{maxPlayers}}</span>
+            </div>
+
+            <div class="players-grid">
+              <div *ngFor="let player of players"
+                   class="player-card"
+                   [ngStyle]="getPlayerBorderStyle(player.color)">
+                <div class="player-avatar">
+                  {{ player.user.username.charAt(0).toUpperCase() }}
+                </div>
+                <div class="player-info">
+                  <div class="player-name">{{ player.user.username }}</div>
+                  <div class="player-status" *ngIf="player.user.id === creatorId">Game Creator</div>
+                  <!-- Color selector for current user -->
+                  <div *ngIf="player.user.username === currentUsername" class="mt-2">
+                    <label class="block text-xs text-gray-500 mb-1">Select your color:</label>
+                    <div class="flex gap-2 flex-wrap">
+                      <button *ngFor="let color of playerColors"
+                        class="w-8 h-8 rounded-full border-2 flex items-center justify-center focus:outline-none"
+                        [ngStyle]="{
+                          'background-color': color.hex,
+                          'color': color.text || '#fff',
+                          'border-color': player.color === color.value ? '#6366f1' : '#e5e7eb',
+                          'box-shadow': player.color === color.value ? '0 0 0 2px #6366f1' : 'none'
+                        }"
+                        [disabled]="player.color === color.value || isColorTaken(color.value)"
+                        (click)="changeColor(color.value)">
+                        <span *ngIf="player.color === color.value">✓</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div *ngIf="lastMessage" 
-               class="message"
-               [ngClass]="{
-                 'message-success': lastMessage.type === 'USER_JOINED',
-                 'message-error': lastMessage.type === 'USER_LEFT' || lastMessage.type === 'GAME_CANCELLED',
-                 'message-info': lastMessage.type === 'ERROR'
-               }">
-            {{ lastMessage.message }}
+            <div *ngIf="lastMessage" 
+                 class="message"
+                 [ngClass]="{
+                   'message-success': lastMessage.type === 'USER_JOINED',
+                   'message-error': lastMessage.type === 'USER_LEFT' || lastMessage.type === 'GAME_CANCELLED',
+                   'message-info': lastMessage.type === 'ERROR'
+                 }">
+              {{ lastMessage.message }}
+            </div>
           </div>
-        </div>
+        </ng-template>
       </div>
 
       <div class="actions">
@@ -307,6 +332,8 @@ export class LobbyComponent implements OnInit, OnDestroy {
   gameName: string = '';
   creatorId: number | null = null;
   playerColors = PLAYER_COLORS;
+  gameStatus: string = '';
+  currentPlayer: GamePlayerDTO | undefined;
 
   constructor(
     private route: ActivatedRoute,
@@ -353,6 +380,8 @@ export class LobbyComponent implements OnInit, OnDestroy {
     this.gameName = game.name;
     this.creatorId = game.createdBy.id;
     this.isCreator = this.currentUsername === game.createdBy.username;
+    this.gameStatus = game.status;
+    this.currentPlayer = this.players.find(p => p.user.username === this.currentUsername);
   }
 
   ngOnDestroy() {
@@ -427,7 +456,9 @@ export class LobbyComponent implements OnInit, OnDestroy {
 
   startGame() {
     if (this.isCreator && this.players.length >= 2) {
-      this.wsService.startGame(this.gameId.toString());
+      const userId = this.authService.currentUserValue?.id;
+      if (!userId) return;
+      this.gameService.startGame(this.gameId, userId).subscribe();
     }
   }
 
@@ -465,5 +496,12 @@ export class LobbyComponent implements OnInit, OnDestroy {
         };
       }
     });
+  }
+}
+
+@Pipe({ name: 'replaceUnderscores' })
+export class ReplaceUnderscoresPipe implements PipeTransform {
+  transform(value: string): string {
+    return value ? value.replace(/_/g, ' ') : '';
   }
 } 

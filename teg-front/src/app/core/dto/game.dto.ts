@@ -11,6 +11,8 @@ export interface GamePlayerDTO {
   color: string;
   turnOrder: number;
   joinedAt: string;
+  objective?: string;
+  countries?: string[];
   // Add other fields as needed
 }
 

@@ -22,6 +22,7 @@ public class GameService {
     private final SimpMessagingTemplate messagingTemplate;
     private final GameRepository gameRepository;
     private final UserService userService;
+    private final CountryService countryService;
     private final UserRepository userRepository;
 
     @Transactional
@@ -180,5 +181,80 @@ public class GameService {
         gamePlayer.setColor(requestedColor);
         gameRepository.save(game);
         return GameDtoMapper.toGamePlayerDTO(gamePlayer);
+    }
+
+    @Transactional
+    public Game startGame(Long gameId, Long creatorId) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new RuntimeException("Game not found"));
+        if (!game.getCreatedBy().getId().equals(creatorId)) {
+            throw new RuntimeException("Only the creator can start the game");
+        }
+        if (game.getStatus() != GameStatus.WAITING) {
+            throw new RuntimeException("Game already started or finished");
+        }
+
+        // Assign countries
+        List<Country> allCountries = countryService.getAllCountries();
+        Collections.shuffle(allCountries);
+        List<GamePlayer> players = new ArrayList<>(game.getPlayers());
+        int numPlayers = players.size();
+        for (int i = 0; i < allCountries.size(); i++) {
+            GamePlayer player = players.get(i % numPlayers);
+            Country country = allCountries.get(i);
+
+            PlayerCountryId pcId = new PlayerCountryId(
+                    player.getId().getGameId(),
+                    player.getId().getUserId(),
+                    country.getId()
+            );
+            PlayerCountry playerCountry = new PlayerCountry(pcId, player, country);
+
+            player.getPlayerCountries().add(playerCountry);
+        }
+
+        // Assign objectives
+        List<Objective> allObjectives = new ArrayList<>(Arrays.asList(Objective.values()));
+        Collections.shuffle(allObjectives);
+        // Track which colors are in play
+        Set<PlayerColor> colorsInPlay = players.stream().map(GamePlayer::getColor).collect(Collectors.toSet());
+        for (GamePlayer player : players) {
+            Objective assigned = null;
+            Iterator<Objective> it = allObjectives.iterator();
+            while (it.hasNext()) {
+                Objective obj = it.next();
+                if (obj.name().startsWith("DESTROY_")) {
+                    // Only assign if that color is in play and not the player's own color
+                    String colorStr = obj.name().replace("DESTROY_", "");
+                    PlayerColor color = PlayerColor.valueOf(colorStr);
+                    if (colorsInPlay.contains(color) && player.getColor() != color) {
+                        assigned = obj;
+                        it.remove();
+                        break;
+                    }
+                } else {
+                    assigned = obj;
+                    it.remove();
+                    break;
+                }
+            }
+            // If no valid destroy objective, fallback to CONQUER_30_COUNTRIES
+            if (assigned == null) {
+                assigned = Objective.CONQUER_30_COUNTRIES;
+            }
+            player.setObjective(assigned);
+        }
+        // 3. Set game status
+        game.setStatus(GameStatus.IN_PROGRESS);
+        gameRepository.save(game);
+
+        messagingTemplate.convertAndSend(
+            "/topic/game-updates",
+            Map.of(
+                "type", "GAME_STARTED",
+                "payload", GameDtoMapper.toGameDTO(game)
+            )
+        );
+        return game;
     }
 } 

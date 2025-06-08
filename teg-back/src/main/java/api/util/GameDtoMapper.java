@@ -3,6 +3,7 @@ package api.util;
 import api.dto.GameDTO;
 import api.dto.GamePlayerDTO;
 import api.dto.UserDTO;
+import api.model.Country;
 import api.model.Game;
 import api.model.GamePlayer;
 import api.model.User;
@@ -21,14 +22,15 @@ public class GameDtoMapper {
     }
 
     public static GamePlayerDTO toGamePlayerDTO(GamePlayer gp) {
-        if (gp == null) return null;
-        return new GamePlayerDTO(
-            gp.getId() != null ? gp.getId().getUserId() : null, // or another unique identifier
-            toUserDTO(gp.getUser()),
-            gp.getColor() != null ? gp.getColor().toString() : null,
-            gp.getTurnOrder(),
-            gp.getJoinedAt()
-        );
+        GamePlayerDTO dto = new GamePlayerDTO();
+        dto.setId(gp.getUser().getId());
+        dto.setUser(toUserDTO(gp.getUser()));
+        dto.setColor(gp.getColor().name());
+        dto.setTurnOrder(gp.getTurnOrder());
+        dto.setJoinedAt(gp.getJoinedAt());
+        dto.setObjective(gp.getObjective() != null ? gp.getObjective().name() : null);
+        dto.setCountries(gp.getCountries() != null ? gp.getCountries().stream().map(Country::getId).toList() : List.of());
+        return dto;
     }
 
     public static GameDTO toGameDTO(Game game) {
