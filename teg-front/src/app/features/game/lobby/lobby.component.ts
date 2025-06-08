@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { WebSocketService } from '../../../core/services/websocket.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { GameDTO, UserDTO, GamePlayerDTO } from '../../../core/dto/game.dto';
+import { GameDTO, GamePlayerDTO } from '../../../core/dto/game.dto';
 import { GameService } from '../../../core/services/game.service';
 import { Subscription } from 'rxjs';
 import { animate, style, transition, trigger } from '@angular/animations';
@@ -228,7 +228,7 @@ export interface LobbyEvent {
                class="message"
                [ngClass]="{
                  'message-success': lastMessage.type === 'USER_JOINED',
-                 'message-error': lastMessage.type === 'USER_LEFT',
+                 'message-error': lastMessage.type === 'USER_LEFT' || lastMessage.type === 'GAME_CANCELLED',
                  'message-info': lastMessage.type === 'ERROR'
                }">
             {{ lastMessage.message }}
@@ -354,7 +354,20 @@ export class LobbyComponent implements OnInit, OnDestroy {
           }
         }
 
-  
+        if (message.type === 'GAME_CANCELLED') {
+          const { gameId, message: cancelMessage } = message.payload;
+          if (this.gameId === gameId) {
+            this.lastMessage = {
+              type: 'GAME_CANCELLED',
+              gameId,
+              message: cancelMessage
+            };
+            setTimeout(() => {
+              this.router.navigate(['/games']);
+            }, 2500);
+          }
+        }
+
       })
     );
   }

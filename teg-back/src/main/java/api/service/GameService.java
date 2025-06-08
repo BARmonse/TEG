@@ -122,8 +122,28 @@ public class GameService {
         try {
             Game game = gameRepository.findById(gameId)
                     .orElseThrow(() -> new RuntimeException("Game not found"));
-            game.getPlayers().removeIf(gp -> gp.getUser().getId().equals(userId));
-            return gameRepository.save(game);
+            boolean isCreator = game.getCreatedBy().getId().equals(userId);
+            if (isCreator) {
+                // Cancel the game: set status, remove all players
+                game.setStatus(GameStatus.CANCELLED);
+                game.getPlayers().clear();
+                game = gameRepository.save(game);
+                // Broadcast cancellation
+                messagingTemplate.convertAndSend(
+                    "/topic/game-updates",
+                    Map.of(
+                        "type", "GAME_CANCELLED",
+                        "payload", Map.of(
+                            "gameId", gameId,
+                            "message", "The game was cancelled because the creator left."
+                        )
+                    )
+                );
+                return game;
+            } else {
+                game.getPlayers().removeIf(gp -> gp.getUser().getId().equals(userId));
+                return gameRepository.save(game);
+            }
         } catch (Exception e) {
             log.error("User {} could not leave game {}. Exception was: {}.", userId, gameId, e.getMessage());
             throw new RuntimeException("Error leaving game");
