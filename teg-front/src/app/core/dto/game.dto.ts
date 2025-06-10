@@ -5,6 +5,11 @@ export interface UserDTO {
   // Add other fields as needed
 }
 
+export interface CountryTroopDTO {
+  country: string;
+  troops: number;
+}
+
 export interface GamePlayerDTO {
   id: any; // You can type this more strictly if you know the structure
   user: UserDTO;
@@ -12,7 +17,7 @@ export interface GamePlayerDTO {
   turnOrder: number;
   joinedAt: string;
   objective?: string;
-  countries?: string[];
+  countries?: CountryTroopDTO[];
   // Add other fields as needed
 }
 

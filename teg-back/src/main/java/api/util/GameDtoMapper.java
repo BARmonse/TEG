@@ -3,6 +3,7 @@ package api.util;
 import api.dto.GameDTO;
 import api.dto.GamePlayerDTO;
 import api.dto.UserDTO;
+import api.dto.CountryTroopDTO;
 import api.model.Country;
 import api.model.Game;
 import api.model.GamePlayer;
@@ -29,7 +30,12 @@ public class GameDtoMapper {
         dto.setTurnOrder(gp.getTurnOrder());
         dto.setJoinedAt(gp.getJoinedAt());
         dto.setObjective(gp.getObjective() != null ? gp.getObjective().name() : null);
-        dto.setCountries(gp.getCountries() != null ? gp.getCountries().stream().map(Country::getId).toList() : List.of());
+        dto.setCountries(gp.getPlayerCountries() != null ?
+            gp.getPlayerCountries().stream()
+                .map(pc -> new CountryTroopDTO(pc.getCountry().getId(), pc.getTroops()))
+                .collect(Collectors.toList())
+            : List.of()
+        );
         return dto;
     }
 

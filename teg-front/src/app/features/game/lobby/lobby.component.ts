@@ -8,6 +8,7 @@ import { GameService } from '../../../core/services/game.service';
 import { Subscription } from 'rxjs';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { Pipe, PipeTransform } from '@angular/core';
+import { ReplaceUnderscoresPipe } from '../../../shared/pipes/replace-underscores.pipe';
 
 export interface LobbyEvent {
     type: 'USER_JOINED' | 'USER_LEFT' | 'GAME_STARTED' | 'GAME_CANCELLED' | 'ERROR';
@@ -28,7 +29,7 @@ const PLAYER_COLORS = [
 @Component({
   selector: 'app-lobby',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ReplaceUnderscoresPipe],
   styles: [`
     :host {
       display: block;
@@ -219,13 +220,13 @@ const PLAYER_COLORS = [
           <div class="mb-8">
             <h2 class="text-xl font-bold mb-2">Your Secret Objective</h2>
             <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-4 text-blue-900">
-              {{ currentPlayer?.objective | titlecase | replaceUnderscores }}
+              {{ (currentPlayer?.objective || '') | titlecase | replaceUnderscores }}
             </div>
             <h2 class="text-xl font-bold mb-2">Your Countries</h2>
             <div class="bg-white border border-gray-200 rounded p-4 mb-4">
               <div class="flex flex-wrap gap-2">
                 <span *ngFor="let country of currentPlayer?.countries" class="inline-block px-3 py-1 rounded bg-gray-100 text-gray-700 text-xs font-medium border border-gray-300">
-                  {{ country | titlecase | replaceUnderscores }}
+                  {{ country.country | titlecase | replaceUnderscores }} ({{ country.troops }})
                 </span>
               </div>
             </div>
@@ -432,6 +433,13 @@ export class LobbyComponent implements OnInit, OnDestroy {
             this.players = this.players.map(player =>
               player.user.id === userId ? { ...player, color } : player
             );
+          }
+        }
+
+        if (message.type === 'GAME_STARTED') {
+          const { id } = message.payload;
+          if (this.gameId === id) {
+            this.router.navigate([`/games/${id}/map`]);
           }
         }
 

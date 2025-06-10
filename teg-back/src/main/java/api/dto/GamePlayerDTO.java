@@ -17,5 +17,5 @@ public class GamePlayerDTO {
     private Integer turnOrder;
     private LocalDateTime joinedAt;
     private String objective;
-    private List<String> countries;
+    private List<CountryTroopDTO> countries;
 } 
