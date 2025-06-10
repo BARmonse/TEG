@@ -45,12 +45,15 @@ public class GamePlayer {
     private Objective objective;
 
     @OneToMany(mappedBy = "gamePlayer", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<PlayerCountry> playerCountries = new HashSet<>();
 
     public Set<Country> getCountries() {
         Set<Country> countries = new HashSet<>();
-        for (PlayerCountry pc : playerCountries) {
-            countries.add(pc.getCountry());
+        if (playerCountries != null) {
+            for (PlayerCountry pc : playerCountries) {
+                countries.add(pc.getCountry());
+            }
         }
         return countries;
     }

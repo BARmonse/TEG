@@ -208,8 +208,7 @@ public class GameService {
                     player.getId().getUserId(),
                     country.getId()
             );
-            PlayerCountry playerCountry = new PlayerCountry(pcId, player, country);
-
+            PlayerCountry playerCountry = new PlayerCountry(pcId, player, country, 1);
             player.getPlayerCountries().add(playerCountry);
         }
 

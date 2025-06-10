@@ -27,4 +27,7 @@ public class PlayerCountry {
     @MapsId("countryId")
     @JoinColumn(name = "country_id", referencedColumnName = "id")
     private Country country;
+
+    @Column(name = "troops", nullable = false)
+    private Integer troops = 1;
 }

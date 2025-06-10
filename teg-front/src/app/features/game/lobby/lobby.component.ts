@@ -22,7 +22,7 @@ const PLAYER_COLORS = [
   { name: 'Green', value: 'GREEN', hex: '#22c55e' },
   { name: 'Yellow', value: 'YELLOW', hex: '#eab308' },
   { name: 'Black', value: 'BLACK', hex: '#111827' },
-  { name: 'White', value: 'WHITE', hex: '#f3f4f6' }
+  { name: 'White', value: 'WHITE', hex: '#f3f4f6', text: "#111827" }
 ];
 
 @Component({
@@ -496,12 +496,5 @@ export class LobbyComponent implements OnInit, OnDestroy {
         };
       }
     });
-  }
-}
-
-@Pipe({ name: 'replaceUnderscores' })
-export class ReplaceUnderscoresPipe implements PipeTransform {
-  transform(value: string): string {
-    return value ? value.replace(/_/g, ' ') : '';
   }
 } 
