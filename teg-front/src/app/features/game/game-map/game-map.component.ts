@@ -47,7 +47,7 @@ export class GameMapComponent implements OnInit, AfterViewInit {
   }
 
   private loadSvgMap() {
-    fetch('assets/teg.map.svg')
+    fetch('assets/teg-map.svg')
       .then(res => res.text())
       .then(svgText => {
         const tempDiv = document.createElement('div');
